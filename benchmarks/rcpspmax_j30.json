@@ -1,0 +1,3482 @@
+{
+ "summary": {
+  "instances": 270,
+  "accepted": 185,
+  "optimal_claims": 172,
+  "infeasible_claims": 85,
+  "reference_infeasible": 85,
+  "infeasible_proven": 85,
+  "reference_feasible": 185,
+  "feasible_found": 185,
+  "with_optimum": 121,
+  "matched_optimum": 120,
+  "mean_gap_pct": 0.031,
+  "max_gap_pct": 3.77,
+  "open_reference": 64,
+  "open_at_or_below_best_known": 61,
+  "mean_lb_dev_pct": 27.22,
+  "unanswered": 0,
+  "false_claims": 0,
+  "mean_seconds": 0.48,
+  "max_seconds": 8.63,
+  "time_limit_s": 10,
+  "seed": 42
+ },
+ "rows": [
+  {
+   "instance": "PSP1",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP2",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP3",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP4",
+   "reference": [
+    84,
+    104
+   ],
+   "seconds": 2.01,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 101,
+   "cpm_lb": 50,
+   "lb_dev_pct": 102.0,
+   "gap_pct": -2.88,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP5",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP6",
+   "reference": "infeasible",
+   "seconds": 0.36,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP7",
+   "reference": "infeasible",
+   "seconds": 0.02,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP8",
+   "reference": "infeasible",
+   "seconds": 0.2,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP9",
+   "reference": [
+    117,
+    117
+   ],
+   "seconds": 0.24,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 117,
+   "cpm_lb": 36,
+   "lb_dev_pct": 225.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP10",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP11",
+   "reference": [
+    62,
+    62
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 62,
+   "cpm_lb": 62,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP12",
+   "reference": [
+    38,
+    48
+   ],
+   "seconds": 0.11,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 46,
+   "cpm_lb": 38,
+   "lb_dev_pct": 21.05,
+   "gap_pct": -4.17,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP13",
+   "reference": [
+    43,
+    63
+   ],
+   "seconds": 0.09,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 63,
+   "cpm_lb": 43,
+   "lb_dev_pct": 46.51,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP14",
+   "reference": [
+    69,
+    69
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 69,
+   "cpm_lb": 69,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP15",
+   "reference": [
+    62,
+    62
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 62,
+   "cpm_lb": 54,
+   "lb_dev_pct": 14.81,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP16",
+   "reference": [
+    49,
+    49
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 49,
+   "cpm_lb": 40,
+   "lb_dev_pct": 22.5,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP17",
+   "reference": [
+    44,
+    57
+   ],
+   "seconds": 0.09,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 57,
+   "cpm_lb": 44,
+   "lb_dev_pct": 29.55,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP18",
+   "reference": "infeasible",
+   "seconds": 0.18,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP19",
+   "reference": "infeasible",
+   "seconds": 0.03,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP20",
+   "reference": [
+    29,
+    32
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 31,
+   "cpm_lb": 29,
+   "lb_dev_pct": 6.9,
+   "gap_pct": -3.12,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP21",
+   "reference": [
+    50,
+    50
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 50,
+   "cpm_lb": 48,
+   "lb_dev_pct": 4.17,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP22",
+   "reference": [
+    78,
+    78
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 78,
+   "cpm_lb": 78,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP23",
+   "reference": [
+    47,
+    47
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 47,
+   "cpm_lb": 44,
+   "lb_dev_pct": 6.82,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP24",
+   "reference": [
+    35,
+    39
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 39,
+   "cpm_lb": 35,
+   "lb_dev_pct": 11.43,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP25",
+   "reference": [
+    78,
+    78
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 78,
+   "cpm_lb": 78,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP26",
+   "reference": [
+    51,
+    51
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 51,
+   "cpm_lb": 51,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP27",
+   "reference": [
+    60,
+    60
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 60,
+   "cpm_lb": 60,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP28",
+   "reference": [
+    87,
+    87
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 87,
+   "cpm_lb": 87,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP29",
+   "reference": [
+    62,
+    62
+   ],
+   "seconds": 0.03,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 62,
+   "cpm_lb": 62,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP30",
+   "reference": [
+    66,
+    66
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 66,
+   "cpm_lb": 66,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP31",
+   "reference": "infeasible",
+   "seconds": 0.24,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP32",
+   "reference": [
+    86,
+    114
+   ],
+   "seconds": 0.37,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 113,
+   "cpm_lb": 30,
+   "lb_dev_pct": 276.67,
+   "gap_pct": -0.88,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP33",
+   "reference": [
+    81,
+    135
+   ],
+   "seconds": 7.41,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 114,
+   "cpm_lb": 32,
+   "lb_dev_pct": 256.25,
+   "gap_pct": -15.56,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP34",
+   "reference": "infeasible",
+   "seconds": 0.43,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP35",
+   "reference": [
+    135,
+    135
+   ],
+   "seconds": 0.08,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 135,
+   "cpm_lb": 81,
+   "lb_dev_pct": 66.67,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP36",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP37",
+   "reference": [
+    84,
+    119
+   ],
+   "seconds": 7.84,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 119,
+   "cpm_lb": 45,
+   "lb_dev_pct": 164.44,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP38",
+   "reference": [
+    63,
+    93
+   ],
+   "seconds": 4.49,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 90,
+   "cpm_lb": 44,
+   "lb_dev_pct": 104.55,
+   "gap_pct": -3.23,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP39",
+   "reference": "infeasible",
+   "seconds": 0.03,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP40",
+   "reference": [
+    80,
+    120
+   ],
+   "seconds": 5.7,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 113,
+   "cpm_lb": 62,
+   "lb_dev_pct": 82.26,
+   "gap_pct": -5.83,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP41",
+   "reference": [
+    40,
+    47
+   ],
+   "seconds": 0.15,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 46,
+   "cpm_lb": 39,
+   "lb_dev_pct": 17.95,
+   "gap_pct": -2.13,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP42",
+   "reference": [
+    57,
+    64
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 64,
+   "cpm_lb": 57,
+   "lb_dev_pct": 12.28,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP43",
+   "reference": [
+    66,
+    66
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 66,
+   "cpm_lb": 64,
+   "lb_dev_pct": 3.12,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP44",
+   "reference": [
+    107,
+    107
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 107,
+   "cpm_lb": 81,
+   "lb_dev_pct": 32.1,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP45",
+   "reference": [
+    49,
+    56
+   ],
+   "seconds": 0.09,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 54,
+   "cpm_lb": 49,
+   "lb_dev_pct": 10.2,
+   "gap_pct": -3.57,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP46",
+   "reference": [
+    42,
+    51
+   ],
+   "seconds": 0.18,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 47,
+   "cpm_lb": 42,
+   "lb_dev_pct": 11.9,
+   "gap_pct": -7.84,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP47",
+   "reference": [
+    41,
+    46
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 46,
+   "cpm_lb": 40,
+   "lb_dev_pct": 15.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP48",
+   "reference": [
+    54,
+    54
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 54,
+   "cpm_lb": 54,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP49",
+   "reference": "infeasible",
+   "seconds": 0.03,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP50",
+   "reference": "infeasible",
+   "seconds": 0.12,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP51",
+   "reference": [
+    71,
+    71
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 71,
+   "cpm_lb": 70,
+   "lb_dev_pct": 1.43,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP52",
+   "reference": [
+    80,
+    80
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 80,
+   "cpm_lb": 80,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP53",
+   "reference": [
+    44,
+    46
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 46,
+   "cpm_lb": 44,
+   "lb_dev_pct": 4.55,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP54",
+   "reference": [
+    35,
+    35
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 35,
+   "cpm_lb": 35,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP55",
+   "reference": [
+    49,
+    49
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 49,
+   "cpm_lb": 49,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP56",
+   "reference": [
+    61,
+    61
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 61,
+   "cpm_lb": 61,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP57",
+   "reference": [
+    66,
+    70
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 70,
+   "cpm_lb": 66,
+   "lb_dev_pct": 6.06,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP58",
+   "reference": [
+    40,
+    40
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 40,
+   "cpm_lb": 40,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP59",
+   "reference": [
+    44,
+    58
+   ],
+   "seconds": 0.15,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 55,
+   "cpm_lb": 44,
+   "lb_dev_pct": 25.0,
+   "gap_pct": -5.17,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP60",
+   "reference": [
+    39,
+    47
+   ],
+   "seconds": 0.17,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 46,
+   "cpm_lb": 39,
+   "lb_dev_pct": 17.95,
+   "gap_pct": -2.13,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP61",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP62",
+   "reference": "infeasible",
+   "seconds": 0.46,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP63",
+   "reference": "infeasible",
+   "seconds": 0.3,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP64",
+   "reference": [
+    141,
+    169
+   ],
+   "seconds": 5.35,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 169,
+   "cpm_lb": 73,
+   "lb_dev_pct": 131.51,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP65",
+   "reference": [
+    144,
+    162
+   ],
+   "seconds": 8.63,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 162,
+   "cpm_lb": 87,
+   "lb_dev_pct": 86.21,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP66",
+   "reference": "infeasible",
+   "seconds": 0.07,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP67",
+   "reference": [
+    91,
+    130
+   ],
+   "seconds": 7.44,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 130,
+   "cpm_lb": 40,
+   "lb_dev_pct": 225.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP68",
+   "reference": [
+    123,
+    174
+   ],
+   "seconds": 6.93,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 174,
+   "cpm_lb": 82,
+   "lb_dev_pct": 112.2,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP69",
+   "reference": "infeasible",
+   "seconds": 0.09,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP70",
+   "reference": "infeasible",
+   "seconds": 0.1,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP71",
+   "reference": [
+    51,
+    56
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 54,
+   "cpm_lb": 51,
+   "lb_dev_pct": 5.88,
+   "gap_pct": -3.57,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP72",
+   "reference": "infeasible",
+   "seconds": 0.14,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP73",
+   "reference": [
+    53,
+    53
+   ],
+   "seconds": 4.1,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 55,
+   "cpm_lb": 35,
+   "lb_dev_pct": 57.14,
+   "gap_pct": 3.77,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP74",
+   "reference": [
+    68,
+    68
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 68,
+   "cpm_lb": 68,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP75",
+   "reference": [
+    52,
+    65
+   ],
+   "seconds": 0.18,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 61,
+   "cpm_lb": 52,
+   "lb_dev_pct": 17.31,
+   "gap_pct": -6.15,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP76",
+   "reference": [
+    56,
+    72
+   ],
+   "seconds": 0.3,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 68,
+   "cpm_lb": 49,
+   "lb_dev_pct": 38.78,
+   "gap_pct": -5.56,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP77",
+   "reference": [
+    43,
+    48
+   ],
+   "seconds": 0.74,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 46,
+   "cpm_lb": 43,
+   "lb_dev_pct": 6.98,
+   "gap_pct": -4.17,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP78",
+   "reference": [
+    56,
+    64
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 61,
+   "cpm_lb": 56,
+   "lb_dev_pct": 8.93,
+   "gap_pct": -4.69,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP79",
+   "reference": [
+    66,
+    71
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 71,
+   "cpm_lb": 66,
+   "lb_dev_pct": 7.58,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP80",
+   "reference": [
+    63,
+    65
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 65,
+   "cpm_lb": 63,
+   "lb_dev_pct": 3.17,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP81",
+   "reference": [
+    36,
+    36
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 36,
+   "cpm_lb": 36,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP82",
+   "reference": [
+    48,
+    48
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 48,
+   "cpm_lb": 48,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP83",
+   "reference": [
+    56,
+    56
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 56,
+   "cpm_lb": 56,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP84",
+   "reference": [
+    51,
+    51
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 51,
+   "cpm_lb": 51,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP85",
+   "reference": [
+    54,
+    54
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 54,
+   "cpm_lb": 54,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP86",
+   "reference": [
+    42,
+    42
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 42,
+   "cpm_lb": 42,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP87",
+   "reference": [
+    66,
+    66
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 66,
+   "cpm_lb": 66,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP88",
+   "reference": [
+    68,
+    68
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 68,
+   "cpm_lb": 68,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP89",
+   "reference": [
+    78,
+    80
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 80,
+   "cpm_lb": 78,
+   "lb_dev_pct": 2.56,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP90",
+   "reference": [
+    87,
+    87
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 87,
+   "cpm_lb": 87,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP91",
+   "reference": [
+    100,
+    100
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 100,
+   "cpm_lb": 78,
+   "lb_dev_pct": 28.21,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP92",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP93",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP94",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP95",
+   "reference": [
+    105,
+    105
+   ],
+   "seconds": 0.08,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 105,
+   "cpm_lb": 80,
+   "lb_dev_pct": 31.25,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP96",
+   "reference": "infeasible",
+   "seconds": 3.59,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP97",
+   "reference": [
+    118,
+    118
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 118,
+   "cpm_lb": 100,
+   "lb_dev_pct": 18.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP98",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP99",
+   "reference": [
+    95,
+    95
+   ],
+   "seconds": 0.15,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 95,
+   "cpm_lb": 57,
+   "lb_dev_pct": 66.67,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP100",
+   "reference": [
+    90,
+    90
+   ],
+   "seconds": 0.24,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 90,
+   "cpm_lb": 65,
+   "lb_dev_pct": 38.46,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP101",
+   "reference": "infeasible",
+   "seconds": 0.32,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP102",
+   "reference": [
+    53,
+    60
+   ],
+   "seconds": 0.11,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 60,
+   "cpm_lb": 53,
+   "lb_dev_pct": 13.21,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP103",
+   "reference": [
+    58,
+    58
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 58,
+   "cpm_lb": 48,
+   "lb_dev_pct": 20.83,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP104",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP105",
+   "reference": [
+    60,
+    60
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 60,
+   "cpm_lb": 60,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP106",
+   "reference": [
+    107,
+    107
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 107,
+   "cpm_lb": 86,
+   "lb_dev_pct": 24.42,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP107",
+   "reference": [
+    60,
+    60
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 60,
+   "cpm_lb": 56,
+   "lb_dev_pct": 7.14,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP108",
+   "reference": [
+    113,
+    113
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 113,
+   "cpm_lb": 108,
+   "lb_dev_pct": 4.63,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP109",
+   "reference": [
+    105,
+    105
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 105,
+   "cpm_lb": 104,
+   "lb_dev_pct": 0.96,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP110",
+   "reference": [
+    145,
+    145
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 145,
+   "cpm_lb": 140,
+   "lb_dev_pct": 3.57,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP111",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP112",
+   "reference": [
+    57,
+    57
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 57,
+   "cpm_lb": 53,
+   "lb_dev_pct": 7.55,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP113",
+   "reference": [
+    47,
+    47
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 47,
+   "cpm_lb": 47,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP114",
+   "reference": [
+    38,
+    42
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 42,
+   "cpm_lb": 38,
+   "lb_dev_pct": 10.53,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP115",
+   "reference": [
+    72,
+    72
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 72,
+   "cpm_lb": 72,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP116",
+   "reference": [
+    39,
+    39
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 39,
+   "cpm_lb": 39,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP117",
+   "reference": [
+    142,
+    142
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 142,
+   "cpm_lb": 136,
+   "lb_dev_pct": 4.41,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP118",
+   "reference": [
+    47,
+    47
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 47,
+   "cpm_lb": 47,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP119",
+   "reference": [
+    65,
+    79
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 79,
+   "cpm_lb": 65,
+   "lb_dev_pct": 21.54,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP120",
+   "reference": [
+    83,
+    83
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 83,
+   "cpm_lb": 65,
+   "lb_dev_pct": 27.69,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP121",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP122",
+   "reference": "infeasible",
+   "seconds": 0.08,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP123",
+   "reference": [
+    91,
+    151
+   ],
+   "seconds": 5.89,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 150,
+   "cpm_lb": 81,
+   "lb_dev_pct": 85.19,
+   "gap_pct": -0.66,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP124",
+   "reference": [
+    87,
+    133
+   ],
+   "seconds": 3.22,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 133,
+   "cpm_lb": 76,
+   "lb_dev_pct": 75.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP125",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP126",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP127",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP128",
+   "reference": [
+    107,
+    107
+   ],
+   "seconds": 0.61,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 107,
+   "cpm_lb": 34,
+   "lb_dev_pct": 214.71,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP129",
+   "reference": [
+    83,
+    145
+   ],
+   "seconds": 0.46,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 145,
+   "cpm_lb": 82,
+   "lb_dev_pct": 76.83,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP130",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP131",
+   "reference": [
+    74,
+    83
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 83,
+   "cpm_lb": 74,
+   "lb_dev_pct": 12.16,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP132",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP133",
+   "reference": [
+    97,
+    101
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 101,
+   "cpm_lb": 97,
+   "lb_dev_pct": 4.12,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP134",
+   "reference": [
+    43,
+    59
+   ],
+   "seconds": 0.78,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 57,
+   "cpm_lb": 42,
+   "lb_dev_pct": 35.71,
+   "gap_pct": -3.39,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP135",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP136",
+   "reference": [
+    95,
+    95
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 95,
+   "cpm_lb": 86,
+   "lb_dev_pct": 10.47,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP137",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP138",
+   "reference": [
+    90,
+    96
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 96,
+   "cpm_lb": 90,
+   "lb_dev_pct": 6.67,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP139",
+   "reference": [
+    80,
+    89
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 88,
+   "cpm_lb": 80,
+   "lb_dev_pct": 10.0,
+   "gap_pct": -1.12,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP140",
+   "reference": [
+    74,
+    74
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 74,
+   "cpm_lb": 73,
+   "lb_dev_pct": 1.37,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP141",
+   "reference": [
+    103,
+    103
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 103,
+   "cpm_lb": 90,
+   "lb_dev_pct": 14.44,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP142",
+   "reference": [
+    70,
+    70
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 70,
+   "cpm_lb": 70,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP143",
+   "reference": [
+    54,
+    54
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 54,
+   "cpm_lb": 54,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP144",
+   "reference": [
+    100,
+    102
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 102,
+   "cpm_lb": 100,
+   "lb_dev_pct": 2.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP145",
+   "reference": [
+    70,
+    70
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 70,
+   "cpm_lb": 70,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP146",
+   "reference": [
+    90,
+    90
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 90,
+   "cpm_lb": 90,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP147",
+   "reference": [
+    50,
+    50
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 50,
+   "cpm_lb": 50,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP148",
+   "reference": "infeasible",
+   "seconds": 0.03,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP149",
+   "reference": [
+    95,
+    105
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 105,
+   "cpm_lb": 95,
+   "lb_dev_pct": 10.53,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP150",
+   "reference": [
+    154,
+    154
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 154,
+   "cpm_lb": 142,
+   "lb_dev_pct": 8.45,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP151",
+   "reference": [
+    142,
+    157
+   ],
+   "seconds": 5.38,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 158,
+   "cpm_lb": 34,
+   "lb_dev_pct": 364.71,
+   "gap_pct": 0.64,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP152",
+   "reference": "infeasible",
+   "seconds": 0.7,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP153",
+   "reference": [
+    163,
+    176
+   ],
+   "seconds": 6.24,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 178,
+   "cpm_lb": 106,
+   "lb_dev_pct": 67.92,
+   "gap_pct": 1.14,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP154",
+   "reference": [
+    103,
+    134
+   ],
+   "seconds": 6.34,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 135,
+   "cpm_lb": 67,
+   "lb_dev_pct": 101.49,
+   "gap_pct": 0.75,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP155",
+   "reference": [
+    125,
+    154
+   ],
+   "seconds": 4.38,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 154,
+   "cpm_lb": 46,
+   "lb_dev_pct": 234.78,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP156",
+   "reference": "infeasible",
+   "seconds": 1.73,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP157",
+   "reference": "infeasible",
+   "seconds": 0.07,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP158",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP159",
+   "reference": "infeasible",
+   "seconds": 0.7,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP160",
+   "reference": "infeasible",
+   "seconds": 0.12,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP161",
+   "reference": [
+    155,
+    155
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 155,
+   "cpm_lb": 148,
+   "lb_dev_pct": 4.73,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP162",
+   "reference": [
+    46,
+    46
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 46,
+   "cpm_lb": 46,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP163",
+   "reference": [
+    47,
+    54
+   ],
+   "seconds": 0.21,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 53,
+   "cpm_lb": 42,
+   "lb_dev_pct": 26.19,
+   "gap_pct": -1.85,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP164",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP165",
+   "reference": [
+    58,
+    70
+   ],
+   "seconds": 0.22,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 69,
+   "cpm_lb": 57,
+   "lb_dev_pct": 21.05,
+   "gap_pct": -1.43,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP166",
+   "reference": [
+    138,
+    138
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 138,
+   "cpm_lb": 124,
+   "lb_dev_pct": 11.29,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP167",
+   "reference": [
+    106,
+    112
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 112,
+   "cpm_lb": 106,
+   "lb_dev_pct": 5.66,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP168",
+   "reference": [
+    41,
+    45
+   ],
+   "seconds": 4.21,
+   "claim": "FEASIBLE",
+   "ok": true,
+   "makespan": 44,
+   "cpm_lb": 33,
+   "lb_dev_pct": 33.33,
+   "gap_pct": -2.22,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP169",
+   "reference": "infeasible",
+   "seconds": 0.8,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP170",
+   "reference": [
+    73,
+    96
+   ],
+   "seconds": 0.11,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 95,
+   "cpm_lb": 73,
+   "lb_dev_pct": 30.14,
+   "gap_pct": -1.04,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP171",
+   "reference": [
+    73,
+    73
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 73,
+   "cpm_lb": 73,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP172",
+   "reference": [
+    46,
+    46
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 46,
+   "cpm_lb": 46,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP173",
+   "reference": [
+    82,
+    85
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 85,
+   "cpm_lb": 82,
+   "lb_dev_pct": 3.66,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP174",
+   "reference": [
+    59,
+    60
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 60,
+   "cpm_lb": 59,
+   "lb_dev_pct": 1.69,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP175",
+   "reference": [
+    59,
+    71
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 70,
+   "cpm_lb": 59,
+   "lb_dev_pct": 18.64,
+   "gap_pct": -1.41,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP176",
+   "reference": [
+    73,
+    93
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 93,
+   "cpm_lb": 73,
+   "lb_dev_pct": 27.4,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP177",
+   "reference": [
+    82,
+    82
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 82,
+   "cpm_lb": 82,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP178",
+   "reference": [
+    59,
+    59
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 59,
+   "cpm_lb": 59,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP179",
+   "reference": [
+    81,
+    81
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 81,
+   "cpm_lb": 80,
+   "lb_dev_pct": 1.25,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP180",
+   "reference": [
+    76,
+    76
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 76,
+   "cpm_lb": 76,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP181",
+   "reference": [
+    158,
+    158
+   ],
+   "seconds": 0.09,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 158,
+   "cpm_lb": 91,
+   "lb_dev_pct": 73.63,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP182",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP183",
+   "reference": "infeasible",
+   "seconds": 0.33,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP184",
+   "reference": "infeasible",
+   "seconds": 0.14,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP185",
+   "reference": [
+    112,
+    112
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 112,
+   "cpm_lb": 112,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP186",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP187",
+   "reference": "infeasible",
+   "seconds": 0.11,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP188",
+   "reference": [
+    142,
+    142
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 142,
+   "cpm_lb": 105,
+   "lb_dev_pct": 35.24,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP189",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP190",
+   "reference": [
+    148,
+    148
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 148,
+   "cpm_lb": 135,
+   "lb_dev_pct": 9.63,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP191",
+   "reference": [
+    127,
+    127
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 127,
+   "cpm_lb": 107,
+   "lb_dev_pct": 18.69,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP192",
+   "reference": [
+    120,
+    120
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 120,
+   "cpm_lb": 108,
+   "lb_dev_pct": 11.11,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP193",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP194",
+   "reference": [
+    131,
+    131
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 131,
+   "cpm_lb": 106,
+   "lb_dev_pct": 23.58,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP195",
+   "reference": [
+    44,
+    58
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 55,
+   "cpm_lb": 44,
+   "lb_dev_pct": 25.0,
+   "gap_pct": -5.17,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP196",
+   "reference": [
+    113,
+    113
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 113,
+   "cpm_lb": 97,
+   "lb_dev_pct": 16.49,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP197",
+   "reference": [
+    141,
+    141
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 141,
+   "cpm_lb": 135,
+   "lb_dev_pct": 4.44,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP198",
+   "reference": [
+    110,
+    110
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 110,
+   "cpm_lb": 94,
+   "lb_dev_pct": 17.02,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP199",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP200",
+   "reference": [
+    122,
+    122
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 122,
+   "cpm_lb": 119,
+   "lb_dev_pct": 2.52,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP201",
+   "reference": "infeasible",
+   "seconds": 0.63,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP202",
+   "reference": [
+    84,
+    84
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 84,
+   "cpm_lb": 83,
+   "lb_dev_pct": 1.2,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP203",
+   "reference": [
+    100,
+    100
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 100,
+   "cpm_lb": 97,
+   "lb_dev_pct": 3.09,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP204",
+   "reference": [
+    47,
+    52
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 51,
+   "cpm_lb": 47,
+   "lb_dev_pct": 8.51,
+   "gap_pct": -1.92,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP205",
+   "reference": [
+    49,
+    49
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 49,
+   "cpm_lb": 46,
+   "lb_dev_pct": 6.52,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP206",
+   "reference": [
+    130,
+    130
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 130,
+   "cpm_lb": 98,
+   "lb_dev_pct": 32.65,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP207",
+   "reference": [
+    127,
+    127
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 127,
+   "cpm_lb": 107,
+   "lb_dev_pct": 18.69,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP208",
+   "reference": [
+    104,
+    104
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 104,
+   "cpm_lb": 92,
+   "lb_dev_pct": 13.04,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP209",
+   "reference": [
+    136,
+    136
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 136,
+   "cpm_lb": 128,
+   "lb_dev_pct": 6.25,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP210",
+   "reference": "infeasible",
+   "seconds": 0.25,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP211",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP212",
+   "reference": "infeasible",
+   "seconds": 0.69,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP213",
+   "reference": "infeasible",
+   "seconds": 0.4,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP214",
+   "reference": "infeasible",
+   "seconds": 0.64,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP215",
+   "reference": [
+    176,
+    176
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 176,
+   "cpm_lb": 140,
+   "lb_dev_pct": 25.71,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP216",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP217",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP218",
+   "reference": "infeasible",
+   "seconds": 0.44,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP219",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP220",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP221",
+   "reference": [
+    183,
+    183
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 183,
+   "cpm_lb": 170,
+   "lb_dev_pct": 7.65,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP222",
+   "reference": [
+    92,
+    92
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 92,
+   "cpm_lb": 82,
+   "lb_dev_pct": 12.2,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP223",
+   "reference": [
+    135,
+    135
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 135,
+   "cpm_lb": 117,
+   "lb_dev_pct": 15.38,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP224",
+   "reference": [
+    96,
+    116
+   ],
+   "seconds": 0.08,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 116,
+   "cpm_lb": 96,
+   "lb_dev_pct": 20.83,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP225",
+   "reference": "infeasible",
+   "seconds": 0.42,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP226",
+   "reference": [
+    127,
+    127
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 127,
+   "cpm_lb": 98,
+   "lb_dev_pct": 29.59,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP227",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP228",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP229",
+   "reference": [
+    172,
+    172
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 172,
+   "cpm_lb": 136,
+   "lb_dev_pct": 26.47,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP230",
+   "reference": [
+    108,
+    116
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 116,
+   "cpm_lb": 108,
+   "lb_dev_pct": 7.41,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP231",
+   "reference": [
+    108,
+    108
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 108,
+   "cpm_lb": 108,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP232",
+   "reference": [
+    149,
+    149
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 149,
+   "cpm_lb": 130,
+   "lb_dev_pct": 14.62,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP233",
+   "reference": [
+    138,
+    138
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 138,
+   "cpm_lb": 109,
+   "lb_dev_pct": 26.61,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP234",
+   "reference": [
+    79,
+    79
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 79,
+   "cpm_lb": 75,
+   "lb_dev_pct": 5.33,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP235",
+   "reference": [
+    136,
+    136
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 136,
+   "cpm_lb": 136,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP236",
+   "reference": [
+    166,
+    166
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 166,
+   "cpm_lb": 164,
+   "lb_dev_pct": 1.22,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP237",
+   "reference": [
+    127,
+    127
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 127,
+   "cpm_lb": 121,
+   "lb_dev_pct": 4.96,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP238",
+   "reference": [
+    161,
+    161
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 161,
+   "cpm_lb": 151,
+   "lb_dev_pct": 6.62,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP239",
+   "reference": [
+    87,
+    87
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 87,
+   "cpm_lb": 81,
+   "lb_dev_pct": 7.41,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP240",
+   "reference": [
+    141,
+    141
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 141,
+   "cpm_lb": 126,
+   "lb_dev_pct": 11.9,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP241",
+   "reference": "infeasible",
+   "seconds": 0.07,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP242",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP243",
+   "reference": "infeasible",
+   "seconds": 0.95,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP244",
+   "reference": [
+    96,
+    153
+   ],
+   "seconds": 1.64,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 153,
+   "cpm_lb": 86,
+   "lb_dev_pct": 77.91,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP245",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP246",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP247",
+   "reference": [
+    106,
+    175
+   ],
+   "seconds": 0.78,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 175,
+   "cpm_lb": 98,
+   "lb_dev_pct": 78.57,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP248",
+   "reference": [
+    164,
+    164
+   ],
+   "seconds": 0.09,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 164,
+   "cpm_lb": 141,
+   "lb_dev_pct": 16.31,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP249",
+   "reference": "infeasible",
+   "seconds": 0.04,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP250",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP251",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP252",
+   "reference": [
+    151,
+    151
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 151,
+   "cpm_lb": 137,
+   "lb_dev_pct": 10.22,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP253",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP254",
+   "reference": [
+    181,
+    181
+   ],
+   "seconds": 0.09,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 181,
+   "cpm_lb": 133,
+   "lb_dev_pct": 36.09,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP255",
+   "reference": [
+    164,
+    164
+   ],
+   "seconds": 0.07,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 164,
+   "cpm_lb": 122,
+   "lb_dev_pct": 34.43,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP256",
+   "reference": "infeasible",
+   "seconds": 0.79,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP257",
+   "reference": "infeasible",
+   "seconds": 0.12,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP258",
+   "reference": "infeasible",
+   "seconds": 0.06,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP259",
+   "reference": "infeasible",
+   "seconds": 0.24,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP260",
+   "reference": "infeasible",
+   "seconds": 0.05,
+   "claim": "INFEASIBLE",
+   "ok": false,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP261",
+   "reference": [
+    184,
+    184
+   ],
+   "seconds": 0.09,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 184,
+   "cpm_lb": 136,
+   "lb_dev_pct": 35.29,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP262",
+   "reference": [
+    114,
+    114
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 114,
+   "cpm_lb": 111,
+   "lb_dev_pct": 2.7,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP263",
+   "reference": [
+    57,
+    57
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 57,
+   "cpm_lb": 57,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP264",
+   "reference": [
+    69,
+    69
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 69,
+   "cpm_lb": 69,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP265",
+   "reference": [
+    61,
+    61
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 61,
+   "cpm_lb": 61,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP266",
+   "reference": [
+    138,
+    138
+   ],
+   "seconds": 0.05,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 138,
+   "cpm_lb": 128,
+   "lb_dev_pct": 7.81,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP267",
+   "reference": [
+    124,
+    124
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 124,
+   "cpm_lb": 124,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP268",
+   "reference": [
+    96,
+    96
+   ],
+   "seconds": 0.04,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 96,
+   "cpm_lb": 96,
+   "lb_dev_pct": 0.0,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP269",
+   "reference": [
+    83,
+    83
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 83,
+   "cpm_lb": 77,
+   "lb_dev_pct": 7.79,
+   "gap_pct": 0.0,
+   "false_claim": false
+  },
+  {
+   "instance": "PSP270",
+   "reference": [
+    190,
+    190
+   ],
+   "seconds": 0.06,
+   "claim": "OPTIMAL",
+   "ok": true,
+   "makespan": 190,
+   "cpm_lb": 153,
+   "lb_dev_pct": 24.18,
+   "gap_pct": 0.0,
+   "false_claim": false
+  }
+ ]
+}

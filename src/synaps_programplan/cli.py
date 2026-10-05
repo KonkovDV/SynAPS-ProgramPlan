@@ -24,6 +24,7 @@ from synaps_programplan.evidence import fingerprint
 from synaps_programplan.explanations import attach_counterfactuals, explain, infeasibility_witness
 from synaps_programplan.io import file_sha256, load_plan, load_program, save_plan, save_program
 from synaps_programplan.io.excel import read_excel, write_template
+from synaps_programplan.io.mpp import read_mpp
 from synaps_programplan.io.mspdi import ImportReport, read_mspdi, write_plan_mspdi
 from synaps_programplan.io.xer import read_xer
 from synaps_programplan.journal import read_journal, verify_journal
@@ -119,6 +120,12 @@ def cmd_import(args: argparse.Namespace) -> int:
                 project.source_hash = file_sha256(path)
             projects.extend(imported)
             links.extend(cross)
+            continue
+        if path.suffix.lower() in {".mpp", ".mpx"}:
+            code = args.codes[index] if args.codes and index < len(args.codes) else f"okr{index + 1}"
+            project = read_mpp(path, code=code, report=report, deadline_hard=not args.soft_deadlines)
+            project.source_hash = file_sha256(path)
+            projects.append(project)
             continue
         code = args.codes[index] if args.codes and index < len(args.codes) else f"okr{index + 1}"
         project = read_mspdi(path, code=code, report=report, deadline_hard=not args.soft_deadlines)
@@ -479,7 +486,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_synth)
 
     p = sub.add_parser(
-        "import", help="импорт MS Project XML и Primavera XER (несколько файлов) или одной книги Excel"
+        "import",
+        help="импорт MS Project (XML, MPP, MPX), Primavera XER (несколько файлов) или одной книги Excel",
     )
     p.add_argument("files", type=Path, nargs="+")
     p.add_argument("--codes", nargs="*")

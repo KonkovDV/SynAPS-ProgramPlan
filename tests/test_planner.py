@@ -9,6 +9,7 @@ from synaps_programplan.checker import check_plan
 from synaps_programplan.model import CapacityException, ExceptionReason, TaskStatus
 from synaps_programplan.planner import SolveConfig, _claim, plan
 from synaps_programplan.result import Claim, PlanResult, Severity
+from synaps_programplan.scenarios import priority_plan
 from tests.conftest import dep, needs, person, program, stand, task, uses
 
 FAST = SolveConfig(time_limit_s=10)
@@ -186,6 +187,29 @@ def test_stability_never_moves_work_earlier_than_approved() -> None:
     result = _accepted(plan(prog, SolveConfig(time_limit_s=10, objective="stability")))
     assert all((row.shift_wd or 0) >= 0 for row in result.tasks)
     assert sorted(row.shift_wd for row in result.tasks) == [0, 3]
+
+
+def test_priority_scenario_serves_the_important_okr_first() -> None:
+    prog = program(
+        [task("a", 5, "p1", demands=uses("st")), task("b", 2, "p2", demands=uses("st"))],
+        resources=[stand()],
+    )
+    prog = prog.model_copy(
+        update={
+            "projects": [
+                prog.projects[0].model_copy(update={"priority": 700}),
+                prog.projects[1].model_copy(update={"priority": 300}),
+            ]
+        }
+    )
+    sum_of_finishes = _accepted(plan(prog, FAST))
+    assert _start(sum_of_finishes, "b") == 0, "the short low-priority OKR goes first without priorities"
+    prioritised = priority_plan(prog, FAST)
+    assert prioritised is not None
+    _accepted(prioritised)
+    assert (_start(prioritised, "a"), _start(prioritised, "b")) == (0, 5)
+    assert [step["priority"] for step in prioritised.metadata["priority_levels"]] == [700, 300]
+    assert priority_plan(program([task("x", 1)]), FAST) is None
 
 
 def test_unproven_infeasibility_is_not_claimed() -> None:

@@ -76,6 +76,7 @@ class Adjustments:
     extra_hi: dict[str, int] = field(default_factory=dict)
     capacity_scale: dict[str, float] = field(default_factory=dict)
     due_override: dict[str, int] | None = None
+    ignore_due_projects: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -195,6 +196,7 @@ def solve_positions(
             capacity_scale=adjustments.capacity_scale,
             zero_due_sinks=config.objective == "finish",
             due_override=due_override,
+            ignore_due_projects=adjustments.ignore_due_projects,
         )
         if compiled.infeasible_windows:
             empty = ScheduleResult(solver_name="precheck", status=SolverStatus.INFEASIBLE)

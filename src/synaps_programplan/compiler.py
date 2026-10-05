@@ -131,6 +131,7 @@ def compile_program(
     capacity_scale: dict[str, float] | None = None,
     zero_due_sinks: bool = False,
     due_override: dict[str, int] | None = None,
+    ignore_due_projects: frozenset[str] = frozenset(),
 ) -> Compiled:
     """Build the kernel problem. ``extra_*`` tighten windows (scenarios, repair).
 
@@ -139,6 +140,8 @@ def compile_program(
     completion times (the kernel makespan also counts fixed calendar blocks).
     ``due_override`` (task -> end boundary) gives tasks their own soft due date;
     such tasks are never merged into chains, so the kernel sees each one.
+    ``ignore_due_projects``: soft due dates of these projects are dropped, so
+    the objective only weighs the other projects (hard deadlines stay).
     """
     calendar = program_calendar(program)
     planning_start = program.program.planning_start
@@ -227,6 +230,7 @@ def compile_program(
         capacity_scale=capacity_scale or {},
         zero_due_sinks=zero_due_sinks,
         due_override=due_override or {},
+        ignore_due_projects=ignore_due_projects,
     )
     return Compiled(
         axis=axis,
@@ -431,6 +435,7 @@ def _build_kernel(
     capacity_scale: dict[str, float],
     zero_due_sinks: bool,
     due_override: dict[str, int],
+    ignore_due_projects: frozenset[str],
 ) -> dict[str, Any]:
     tasks = {task.id: task for task in program.tasks}
     projects = {project.id: project for project in program.projects}
@@ -461,6 +466,8 @@ def _build_kernel(
             due_dt = horizon_end
         if chain[-1] in due_override:
             due_dt = min(due_dt, origin + timedelta(minutes=max(0, due_override[chain[-1]]) + tail))
+        if tasks[chain[-1]].project_id in ignore_due_projects:
+            due_dt = horizon_end
         orders.append(
             Order(
                 id=order_id,

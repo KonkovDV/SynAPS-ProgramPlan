@@ -1,0 +1,90 @@
+{
+ "seed": 42,
+ "tasks_per_stage": 6,
+ "rows": [
+  {
+   "projects": 16,
+   "tasks": 672,
+   "links": 1115,
+   "resources": 53,
+   "solver": "greedy",
+   "claim": "HEURISTIC_FEASIBLE",
+   "ok": true,
+   "program_finish": "2030-04-03",
+   "late_milestones": 14,
+   "tardiness_wd": 1043,
+   "seconds": 10.7,
+   "time_limit_s": null
+  },
+  {
+   "projects": 16,
+   "tasks": 672,
+   "links": 1115,
+   "resources": 53,
+   "solver": "cpsat",
+   "claim": "FEASIBLE",
+   "ok": true,
+   "program_finish": "2029-10-18",
+   "late_milestones": 8,
+   "tardiness_wd": 477,
+   "seconds": 73.7,
+   "time_limit_s": 60
+  },
+  {
+   "projects": 32,
+   "tasks": 1344,
+   "links": 2225,
+   "resources": 106,
+   "solver": "greedy",
+   "claim": "HEURISTIC_FEASIBLE",
+   "ok": true,
+   "program_finish": "2030-03-25",
+   "late_milestones": 38,
+   "tardiness_wd": 4940,
+   "seconds": 13.6,
+   "time_limit_s": null
+  },
+  {
+   "projects": 32,
+   "tasks": 1344,
+   "links": 2225,
+   "resources": 106,
+   "solver": "cpsat",
+   "claim": "FEASIBLE",
+   "ok": true,
+   "program_finish": "2029-08-30",
+   "late_milestones": 35,
+   "tardiness_wd": 2710,
+   "seconds": 79.2,
+   "time_limit_s": 60
+  },
+  {
+   "projects": 64,
+   "tasks": 2688,
+   "links": 4435,
+   "resources": 213,
+   "solver": "greedy",
+   "claim": "HEURISTIC_FEASIBLE",
+   "ok": true,
+   "program_finish": "2030-04-12",
+   "late_milestones": 66,
+   "tardiness_wd": 7997,
+   "seconds": 34.0,
+   "time_limit_s": null
+  },
+  {
+   "projects": 64,
+   "tasks": 2688,
+   "links": 4435,
+   "resources": 213,
+   "solver": "cpsat",
+   "claim": "FEASIBLE",
+   "ok": true,
+   "program_finish": "2030-02-11",
+   "late_milestones": 56,
+   "tardiness_wd": 5790,
+   "seconds": 157.0,
+   "time_limit_s": 60
+  }
+ ]
+}

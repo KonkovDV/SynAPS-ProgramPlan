@@ -8,6 +8,10 @@ B "Ресурсы"      - same, but shared people/stands keep a capacity reserve
 C "Стабильность" - minimum total delay against the approved plan, nothing
                    earlier than approved (fallback: smallest uniform shift limit).
 D "Баланс"       - program finish within (1+eps) of A, then minimum delay.
+P "Приоритет"    - lexicographic by OKR priority: OKRs of the top level are
+                   planned first, their finish and milestone dates become
+                   upper bounds, then the next level is added (only when the
+                   projects carry at least two priority levels).
 E "Что если"     - A on a modified program (extra capacity, moved milestone,
                    dropped OKR, delayed task).
 
@@ -194,6 +198,10 @@ def run_scenarios(
             balanced.metadata["finish_cap_index"] = cap
             plans.append(balanced)
 
+    prioritised = priority_plan(program, config, warm=base)
+    if prioritised is not None:
+        plans.append(prioritised)
+
     for index, what_if in enumerate(what_ifs or []):
         modified = apply_what_if(program, what_if)
         result = plan(
@@ -211,6 +219,79 @@ def run_scenarios(
         }
         plans.append(result)
     return ScenarioSet(plans=plans, duplicates=_dedupe(plans))
+
+
+def priority_plan(
+    program: OKRProgram, config: SolveConfig, *, warm: PlanResult | None = None
+) -> PlanResult | None:
+    """Scenario P: higher-priority OKRs never lose time to lower-priority ones.
+
+    Level by level (highest ``Project.priority`` first) the kernel optimises
+    only the OKRs planned so far - lower levels are scheduled, but their soft
+    due dates are ignored. The milestones and terminal tasks of those OKRs
+    then get the dates they reached as upper bounds, and the next level is
+    added. Each step starts from the previous plan, which already meets every
+    bound, so the bounds never make the next step infeasible. ``None`` when the
+    program has a single priority level.
+    """
+    levels = sorted({p.priority for p in program.projects if _project_active(program, p.id)}, reverse=True)
+    if len(levels) < 2:
+        return None
+    targets = _targets(program)
+    caps: dict[str, int] = {}
+    steps: list[dict[str, object]] = []
+    previous = warm if warm is not None and warm.outcome.ok else None
+    result: PlanResult | None = None
+    for level in levels:
+        ignored = frozenset(p.id for p in program.projects if p.priority < level)
+        result = plan(
+            program,
+            config,
+            scenario_id="P",
+            label="P · Приоритет ОКР",
+            adjustments=Adjustments(extra_hi=dict(caps), ignore_due_projects=ignored),
+            warm_start=previous,
+        )
+        steps.append(
+            {
+                "priority": level,
+                "claim": result.outcome.claim.value,
+                "ok": result.outcome.ok,
+                "bounds": len(caps),
+            }
+        )
+        if not result.outcome.ok:
+            break
+        planned = {p.id for p in program.projects if p.priority >= level}
+        for row in result.tasks:
+            if row.task_id in targets and row.project_id in planned:
+                caps[row.task_id] = min(caps.get(row.task_id, row.end_index), row.end_index)
+        previous = result
+    assert result is not None
+    result.metadata["priority_levels"] = steps
+    result.metadata["priority_bounds"] = len(caps)
+    return result
+
+
+def _targets(program: OKRProgram) -> set[str]:
+    """Tasks whose dates carry an OKR's result: milestones, dated tasks, terminal tasks."""
+    has_successor = {d.src_task_id for d in program.dependencies if d.hard}
+    return {
+        t.id
+        for t in program.tasks
+        if t.status is not TaskStatus.DONE
+        and (
+            t.duration_wd == 0
+            or t.due_date is not None
+            or t.deadline is not None
+            or t.latest_finish is not None
+            or t.id not in has_successor
+        )
+    }
+
+
+def _project_active(program: OKRProgram, project_id: str) -> bool:
+    return any(t.project_id == project_id and t.status is not TaskStatus.DONE for t in program.tasks)
 
 
 def _active(program: OKRProgram) -> set[str]:
