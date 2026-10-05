@@ -116,6 +116,12 @@ def apply_what_if(program: OKRProgram, what_if: WhatIf) -> OKRProgram:
             data["baseline"]["task_dates"] = {
                 k: v for k, v in data["baseline"]["task_dates"].items() if k in keep
             }
+        drivers = []
+        for driver in data.get("risk_drivers", []):
+            driver["task_ids"] = [t for t in driver["task_ids"] if t in keep]
+            if driver["task_ids"]:
+                drivers.append(driver)
+        data["risk_drivers"] = drivers
     for resource in data["resources"]:
         resource["capacity_units"] += what_if.add_capacity.get(resource["id"], 0)
     for task in data["tasks"]:

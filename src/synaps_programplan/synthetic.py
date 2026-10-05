@@ -35,6 +35,7 @@ from synaps_programplan.model import (
     ProvenanceKind,
     Resource,
     ResourceKind,
+    RiskDriver,
     Skill,
     Task,
     TaskKind,
@@ -273,10 +274,41 @@ def _with_dates(rng: random.Random, spec: SyntheticSpec, draft: OKRProgram) -> O
             "tasks": tasks,
             "capacity_exceptions": exceptions,
             "baseline": Baseline(id="bl-0", approved_by="synthetic", task_dates=baseline),
+            "risk_drivers": _risk_drivers(draft),
             "provenance": Provenance(kind=ProvenanceKind.SYNTHETIC, source=f"synthetic seed={spec.seed}"),
         }
     )
     return OKRProgram.model_validate(updated.model_dump())
+
+
+def _risk_drivers(draft: OKRProgram) -> list[RiskDriver]:
+    """Typical OKR risk register entries; illustrative values, not customer data."""
+    by_stage: dict[str, list[str]] = {}
+    for task in draft.tasks:
+        if task.duration_wd > 0 and task.okr_stage:
+            by_stage.setdefault(task.okr_stage, []).append(task.id)
+    specs = [
+        ("R-TEST", "Повторные испытания после отказа на стенде", 0.35, 1.1, 1.4, 1.9, ["PI"]),
+        ("R-SUPPLY", "Задержка поставки комплектующих опытного образца", 0.3, 1.0, 1.25, 1.7, ["OO"]),
+        ("R-DOC", "Доработка КД по замечаниям нормоконтроля и заказчика", 0.4, 1.0, 1.15, 1.4, ["RKD", "KD"]),
+    ]
+    drivers: list[RiskDriver] = []
+    for driver_id, name, probability, low, mode, high, stages in specs:
+        task_ids = [task_id for stage in stages for task_id in by_stage.get(stage, [])]
+        if task_ids:
+            drivers.append(
+                RiskDriver(
+                    id=driver_id,
+                    name=name,
+                    probability=probability,
+                    low=low,
+                    mode=mode,
+                    high=high,
+                    task_ids=task_ids,
+                    owner="синтетика",
+                )
+            )
+    return drivers
 
 
 def _levelled_per_project(

@@ -17,6 +17,7 @@ from synaps_programplan.calendar import is_provisional
 from synaps_programplan.compiler import compile_program
 from synaps_programplan.conflicts import Analysis
 from synaps_programplan.model import OKRProgram, TaskStatus
+from synaps_programplan.montecarlo import RiskResult
 from synaps_programplan.planner import resource_profiles
 from synaps_programplan.result import PlanResult
 from synaps_programplan.scenarios import compare
@@ -28,6 +29,7 @@ def report_data(
     plans: list[PlanResult],
     analysis: Analysis | None = None,
     witness: dict[str, Any] | None = None,
+    risk: RiskResult | None = None,
 ) -> dict[str, Any]:
     compiled = compile_program(program)
     axis_days = [d.isoformat() for d in compiled.axis.days]
@@ -94,7 +96,13 @@ def report_data(
             entry["violations"] = [v.model_dump(mode="json") for v in result.violations]
         scenarios.append(entry)
     edges = [
-        {"src": e.src_task_id, "dst": e.dst_task_id, "type": e.type.value, "lag": e.lag_wd}
+        {
+            "src": e.src_task_id,
+            "dst": e.dst_task_id,
+            "type": e.type.value,
+            "lag": e.lag_wd,
+            "max_lag": e.max_lag_wd,
+        }
         for e in program.dependencies
         if e.hard
     ]
@@ -125,7 +133,29 @@ def report_data(
         },
         "provisional_years": [y for y in years if is_provisional(y)],
         "done_ids": [t.id for t in program.tasks if t.status is TaskStatus.DONE],
+        "risk": _risk(risk, tasks) if risk else None,
     }
+
+
+def _risk(risk: RiskResult, tasks: dict[str, Any]) -> dict[str, Any]:
+    payload = risk.as_dict()
+    critical = sorted(risk.criticality.items(), key=lambda item: (-item[1], item[0]))
+    payload["criticality_top"] = [
+        {
+            "task_id": task_id,
+            "name": tasks[task_id].name,
+            "project": tasks[task_id].project_id,
+            "index": share,
+        }
+        for task_id, share in critical[:15]
+        if share > 0 and task_id in tasks
+    ]
+    payload.pop("criticality")
+    payload["milestone_risk"] = [
+        {**item.as_dict(), "project": tasks[item.task_id].project_id if item.task_id in tasks else ""}
+        for item in risk.milestone_risk
+    ]
+    return payload
 
 
 def _iso(value: date | None) -> str | None:
@@ -145,5 +175,6 @@ def build_report(
     analysis: Analysis | None = None,
     witness: dict[str, Any] | None = None,
     title: str | None = None,
+    risk: RiskResult | None = None,
 ) -> str:
-    return render_html(report_data(program, plans, analysis, witness), title)
+    return render_html(report_data(program, plans, analysis, witness, risk), title)

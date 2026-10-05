@@ -41,3 +41,14 @@ def test_solve_and_risk_on_a_chain() -> None:
     assert risk.status_code == 200
     assert risk.json()["scheduled_runs"] == 5
     assert "не доказанная вероятность" in risk.json()["note"]
+    checked = client.post("/check", json={"program": _body(prog), "plan": solved.json()["result"]})
+    assert checked.json() == {"ok": True, "hard": 0, "violations": []}
+    moved = client.post(
+        "/check",
+        json={"program": _body(prog), "plan": solved.json()["result"], "moves": {"b": "2026-10-05"}},
+    )
+    assert moved.status_code == 200 and moved.json()["hard"] >= 1
+    unknown = client.post(
+        "/check", json={"program": _body(prog), "plan": solved.json()["result"], "moves": {"z": "2026-10-05"}}
+    )
+    assert unknown.status_code == 422

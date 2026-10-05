@@ -75,6 +75,7 @@ class Adjustments:
     extra_lo: dict[str, int] = field(default_factory=dict)
     extra_hi: dict[str, int] = field(default_factory=dict)
     capacity_scale: dict[str, float] = field(default_factory=dict)
+    due_override: dict[str, int] | None = None
 
 
 @dataclass
@@ -180,8 +181,8 @@ def solve_positions(
     hint: dict[str, tuple[int, int]] | None = None,
 ) -> SolveRun:
     extra_lo = dict(adjustments.extra_lo)
-    due_override = None
-    if config.objective == "stability":
+    due_override = adjustments.due_override
+    if due_override is None and config.objective == "stability":
         due_override = _stability_targets(program, extra_lo)
     iterations = 0
     while True:

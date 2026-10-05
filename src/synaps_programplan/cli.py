@@ -19,14 +19,17 @@ from pydantic import ValidationError
 from synaps_programplan.checker import check_plan
 from synaps_programplan.conflicts import analyze
 from synaps_programplan.disrupt import Disruption, apply_disruption, roll_forward
+from synaps_programplan.edits import check_moves, repair_with_moves
 from synaps_programplan.evidence import fingerprint
 from synaps_programplan.explanations import attach_counterfactuals, explain, infeasibility_witness
 from synaps_programplan.io import file_sha256, load_plan, load_program, save_plan, save_program
 from synaps_programplan.io.excel import read_excel, write_template
 from synaps_programplan.io.mspdi import ImportReport, read_mspdi, write_plan_mspdi
+from synaps_programplan.io.xer import read_xer
+from synaps_programplan.journal import read_journal, verify_journal
 from synaps_programplan.merge import merge_projects, read_links_csv
-from synaps_programplan.model import Provenance, ProvenanceKind
-from synaps_programplan.montecarlo import simulate
+from synaps_programplan.model import OKRProgram, Provenance, ProvenanceKind
+from synaps_programplan.montecarlo import RiskResult, simulate
 from synaps_programplan.planner import SolveConfig, plan
 from synaps_programplan.report import build_report
 from synaps_programplan.result import PlanResult, Severity
@@ -108,12 +111,21 @@ def cmd_import(args: argparse.Namespace) -> int:
         return 0
     report = ImportReport()
     projects = []
+    links = read_links_csv(args.links) if args.links else []
     for index, path in enumerate(args.files):
+        if path.suffix.lower() == ".xer":
+            imported, cross = read_xer(path, report=report)
+            for project in imported:
+                project.source_hash = file_sha256(path)
+            projects.extend(imported)
+            links.extend(cross)
+            continue
         code = args.codes[index] if args.codes and index < len(args.codes) else f"okr{index + 1}"
         project = read_mspdi(path, code=code, report=report, deadline_hard=not args.soft_deadlines)
         project.source_hash = file_sha256(path)
         projects.append(project)
-    links = read_links_csv(args.links) if args.links else []
+    if len({p.code for p in projects}) != len(projects):
+        raise ValueError("коды ОКР повторяются: задайте --codes или переименуйте проекты в источнике")
     provenance = Provenance(
         kind=ProvenanceKind(args.provenance),
         source=", ".join(p.name for p in args.files),
@@ -143,7 +155,7 @@ def cmd_import(args: argparse.Namespace) -> int:
 
 def cmd_template(args: argparse.Namespace) -> int:
     write_template(args.out)
-    _print({"out": str(args.out), "sheets": 9})
+    _print({"out": str(args.out), "sheets": 10})
     return 0
 
 
@@ -173,13 +185,50 @@ def cmd_solve(args: argparse.Namespace) -> int:
     return 0 if result.outcome.ok else 1
 
 
+def _moves(path: Path) -> dict[str, date]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    moves = raw.get("moves", raw) if isinstance(raw, dict) else None
+    if not isinstance(moves, dict):
+        raise ValueError(f"{path.name}: expected {{'moves': {{task_id: 'YYYY-MM-DD'}}}}")
+    return {str(task_id): date.fromisoformat(str(day)) for task_id, day in moves.items()}
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     result = load_plan(args.plan)
+    if args.moves:
+        checked = check_moves(program, result, _moves(args.moves))
+        _print(
+            {
+                "hard": checked["hard"],
+                "moved": checked["moved"],
+                "kpi": checked["kpi"],
+                "violations": checked["violations"][:200],
+            }
+        )
+        return 1 if checked["hard"] else 0
     violations = check_plan(program, result.tasks)
     hard = [v for v in violations if v.severity is Severity.HARD]
     _print({"hard": len(hard), "violations": [v.model_dump(mode="json") for v in violations[:200]]})
     return 1 if hard else 0
+
+
+def cmd_replan(args: argparse.Namespace) -> int:
+    program = load_program(args.program)
+    base = load_plan(args.plan)
+    moves = _moves(args.moves)
+    result = repair_with_moves(
+        program,
+        base,
+        moves,
+        _config(args),
+        scenario_id=args.scenario_id,
+        label=f"{args.scenario_id} · правка {base.scenario_id}: закреплено {len(moves)}",
+        mode=args.mode,
+    )
+    save_plan(result, args.out)
+    _print(_summary(result))
+    return 0 if result.outcome.ok else 1
 
 
 def cmd_explain(args: argparse.Namespace) -> int:
@@ -237,9 +286,61 @@ def cmd_report(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     plans = [load_plan(path) for path in args.plans]
     witness = json.loads(args.witness.read_text(encoding="utf-8")) if args.witness else None
-    html_text = build_report(program, plans, analyze(program), witness)
+    risk = _risk_for(program, plans, args.risk_runs, args.risk_scenario, args.seed)
+    html_text = build_report(program, plans, analyze(program), witness, risk=risk)
     args.out.write_text(html_text, encoding="utf-8")
     _print({"out": str(args.out), "plans": len(plans), "accepted": sum(p.outcome.ok for p in plans)})
+    return 0
+
+
+def _risk_for(
+    program: OKRProgram, plans: list[PlanResult], runs: int, scenario: str | None, seed: int
+) -> RiskResult | None:
+    if runs <= 0:
+        return None
+    accepted = [p for p in plans if p.outcome.ok and (scenario is None or p.scenario_id == scenario)]
+    if not accepted:
+        if scenario is not None:
+            raise ValueError(f"scenario {scenario!r} has no accepted plan for the risk section")
+        return None
+    return simulate(program, accepted[0], runs=runs, seed=seed)
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    try:
+        import uvicorn
+
+        from synaps_programplan.auth import TokenStore
+        from synaps_programplan.workbench import LOOPBACK_HOSTS, Workbench, create_app
+    except ImportError as exc:
+        sys.stderr.write(f"SynAPS-ProgramPlan: serve needs the api extra (pip install .[api]): {exc}\n")
+        return 2
+    program = load_program(args.program)
+    plans = [load_plan(path) for path in args.plans]
+    tokens = TokenStore.from_env()
+    if not tokens.enabled and args.host not in LOOPBACK_HOSTS:
+        sys.stderr.write(
+            "SynAPS-ProgramPlan: without SYNAPS_PROGRAMPLAN_TOKENS the workbench listens on loopback only\n"
+        )
+        return 2
+    witness = json.loads(args.witness.read_text(encoding="utf-8")) if args.witness else None
+    bench = Workbench(
+        program=program,
+        plans=plans,
+        journal=args.journal,
+        save_dir=args.save_dir or args.journal.parent,
+        config=_config(args),
+        witness=witness,
+        risk=_risk_for(program, plans, args.risk_runs, None, args.seed),
+        tokens=tokens,
+    )
+    if bench.restored:
+        sys.stderr.write(f"SynAPS-ProgramPlan: restored edited variants {', '.join(bench.restored)}\n")
+    sys.stderr.write(
+        f"SynAPS-ProgramPlan workbench: http://{args.host}:{args.port}/ "
+        f"({'roles from SYNAPS_PROGRAMPLAN_TOKENS' if tokens.enabled else 'local mode, one planner'})\n"
+    )
+    uvicorn.run(create_app(bench), host=args.host, port=args.port, log_level="warning")
     return 0
 
 
@@ -287,7 +388,10 @@ def _unavailable(text: str) -> tuple[str, date, date]:
 def cmd_risk(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     report = simulate(program, load_plan(args.plan), runs=args.runs, seed=args.seed)
-    _print(report.as_dict())
+    payload = report.as_dict()
+    if args.out:
+        args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
+    _print({key: value for key, value in payload.items() if key != "criticality"} if args.brief else payload)
     return 0
 
 
@@ -316,7 +420,10 @@ def cmd_demo(args: argparse.Namespace) -> int:
     witness = infeasibility_witness(tight, time_limit_s=max(4, args.time_limit // 2))
     (out / "witness_infeasible.json").write_text(json.dumps(witness, ensure_ascii=False, indent=1), "utf-8")
     plans = [p for p in scenario_set.plans if p.scenario_id[0] != "E" or p.outcome.ok]
-    (out / "report.html").write_text(build_report(program, plans, analysis), encoding="utf-8")
+    risk = simulate(program, base, runs=args.risk_runs, seed=args.seed) if base.outcome.ok else None
+    if risk is not None:
+        (out / "risk_A.json").write_text(json.dumps(risk.as_dict(), ensure_ascii=False, indent=1), "utf-8")
+    (out / "report.html").write_text(build_report(program, plans, analysis, risk=risk), encoding="utf-8")
     (out / "report_infeasible.html").write_text(
         build_report(
             tight, [plan(tight, config, scenario_id="A", label="A · Сроки")], analyze(tight), witness
@@ -328,10 +435,19 @@ def cmd_demo(args: argparse.Namespace) -> int:
             "out_dir": str(out),
             "conflicts": analysis.summary(),
             "scenarios": compare(scenario_set.plans),
+            "risk_p80": risk.program_finish.get("p80") if risk else None,
+            "risk_drivers": [d.as_dict() for d in risk.drivers] if risk else [],
             "infeasible_witness": witness.get("text"),
         }
     )
     return 0 if base.outcome.ok else 1
+
+
+def cmd_journal(args: argparse.Namespace) -> int:
+    check = verify_journal(args.journal)
+    records = read_journal(args.journal)
+    _print({"integrity": check.as_dict(), "records": records[-args.tail :] if args.tail else records})
+    return 0 if check.ok else 1
 
 
 def cmd_version(_: argparse.Namespace) -> int:
@@ -362,7 +478,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--infeasible", action="store_true")
     p.set_defaults(func=cmd_synth)
 
-    p = sub.add_parser("import", help="импорт MSPDI XML (несколько файлов) или одной книги Excel")
+    p = sub.add_parser(
+        "import", help="импорт MS Project XML и Primavera XER (несколько файлов) или одной книги Excel"
+    )
     p.add_argument("files", type=Path, nargs="+")
     p.add_argument("--codes", nargs="*")
     p.add_argument("--links", type=Path, help="CSV межпроектных связей")
@@ -394,10 +512,38 @@ def build_parser() -> argparse.ArgumentParser:
     _solve_args(p)
     p.set_defaults(func=cmd_solve)
 
-    p = sub.add_parser("check", help="независимая проверка плана")
+    p = sub.add_parser("check", help="независимая проверка плана (и ручных правок)")
     p.add_argument("program", type=Path)
     p.add_argument("plan", type=Path)
+    p.add_argument("--moves", type=Path, help="JSON правок из отчёта: {moves: {task_id: дата}}")
     p.set_defaults(func=cmd_check)
+
+    p = sub.add_parser("replan", help="закрепить ручные правки и пересчитать остальной план")
+    p.add_argument("program", type=Path)
+    p.add_argument("plan", type=Path)
+    p.add_argument("--moves", type=Path, required=True)
+    p.add_argument("--scenario-id", default="R1")
+    p.add_argument(
+        "--mode",
+        choices=["stable", "optimise"],
+        default="stable",
+        help="stable — минимум перестановок относительно исходного плана; optimise — пересчитать сроки",
+    )
+    p.add_argument("--out", type=Path, required=True)
+    _solve_args(p)
+    p.set_defaults(func=cmd_replan)
+
+    p = sub.add_parser("serve", help="рабочее место планировщика: отчёт с правкой, решения, журнал")
+    p.add_argument("program", type=Path)
+    p.add_argument("plans", type=Path, nargs="+")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--journal", type=Path, default=Path("decisions.jsonl"))
+    p.add_argument("--save-dir", type=Path, help="куда сохранять принятые варианты с правками")
+    p.add_argument("--witness", type=Path)
+    p.add_argument("--risk-runs", type=int, default=0)
+    _solve_args(p)
+    p.set_defaults(func=cmd_serve)
 
     p = sub.add_parser("explain", help="объяснить сдвиги принятого плана")
     p.add_argument("program", type=Path)
@@ -424,6 +570,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("program", type=Path)
     p.add_argument("plans", type=Path, nargs="+")
     p.add_argument("--witness", type=Path)
+    p.add_argument("--risk-runs", type=int, default=0, help="раздел риска: число выборок (0 — без раздела)")
+    p.add_argument("--risk-scenario", help="вариант для раздела риска (по умолчанию первый принятый)")
+    p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out", type=Path, required=True)
     p.set_defaults(func=cmd_report)
 
@@ -450,6 +599,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("plan", type=Path)
     p.add_argument("--runs", type=int, default=200)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--out", type=Path, help="сохранить результат в JSON")
+    p.add_argument("--brief", action="store_true", help="без индекса критичности по каждой работе")
     p.set_defaults(func=cmd_risk)
 
     p = sub.add_parser("demo", help="демонстрация одной командой")
@@ -458,7 +609,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--seed", type=int, default=7)
     p.add_argument("--time-limit", type=int, default=10)
     p.add_argument("--counterfactuals", type=int, default=3)
+    p.add_argument("--risk-runs", type=int, default=200)
     p.set_defaults(func=cmd_demo)
+
+    p = sub.add_parser("journal", help="журнал решений: записи и проверка целостности цепочки")
+    p.add_argument("journal", type=Path)
+    p.add_argument("--tail", type=int, default=0)
+    p.set_defaults(func=cmd_journal)
 
     p = sub.add_parser("version")
     p.set_defaults(func=cmd_version)

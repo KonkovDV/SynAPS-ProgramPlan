@@ -5,7 +5,7 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 from synaps_programplan.io.excel import read_excel, write_excel, write_template
-from synaps_programplan.model import DependencyType, TaskKind, TaskStatus
+from synaps_programplan.model import DependencyType, RiskDriver, TaskKind, TaskStatus
 from tests.conftest import dep, needs, person, program, stand, task, uses
 
 
@@ -31,6 +31,22 @@ def test_excel_roundtrip(tmp_path: Path) -> None:
     assert loaded.dependencies[0].lag_wd == 1
     assert {r.id for r in loaded.resources} == {"st", "ivanov"}
     assert loaded.resources[1].skills == ["design"]
+
+
+def test_risk_register_roundtrip(tmp_path: Path) -> None:
+    original = program(
+        [task("a", 3), task("b", 2)],
+        risk_drivers=[RiskDriver(id="R1", name="Повторные испытания", probability=0.3, task_ids=["a", "b"])],
+    )
+    path = tmp_path / "program.xlsx"
+    write_excel(original, path)
+    book = load_workbook(path)
+    book["Risks"].append(["R2", "Поставка", "0,25", 1, None, 2, "b", "снабжение"])
+    book.save(path)
+    loaded = read_excel(path)
+    first, second = loaded.risk_drivers
+    assert first.task_ids == ["a", "b"] and first.probability == 0.3
+    assert second.probability == 0.25 and second.mode == 1.2 and second.owner == "снабжение"
 
 
 def test_optional_columns_may_stay_empty(tmp_path: Path) -> None:

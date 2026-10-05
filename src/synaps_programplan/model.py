@@ -260,6 +260,26 @@ class FreezePolicy(_Strict):
     freeze_pinned: bool = True
 
 
+class RiskDriver(_Strict):
+    """A named uncertainty (AACE 57R-09 risk driver): with ``probability`` it
+    multiplies the duration of ``task_ids`` by a triangular factor."""
+
+    id: str
+    name: str
+    probability: float = Field(gt=0, le=1)
+    low: float = Field(default=1.0, gt=0)
+    mode: float = Field(default=1.2, gt=0)
+    high: float = Field(default=1.5, gt=0)
+    task_ids: list[str] = Field(min_length=1)
+    owner: str = ""
+
+    @model_validator(mode="after")
+    def _ordered(self) -> Self:
+        if not self.low <= self.mode <= self.high:
+            raise ValueError(f"risk driver {self.id}: need low <= mode <= high")
+        return self
+
+
 class ProvenanceKind(StrEnum):
     SYNTHETIC = "synthetic"
     OPEN_DATA = "open_data"
@@ -289,6 +309,7 @@ class OKRProgram(_Strict):
     capacity_exceptions: list[CapacityException] = Field(default_factory=list)
     baseline: Baseline | None = None
     freeze: FreezePolicy = Field(default_factory=FreezePolicy)
+    risk_drivers: list[RiskDriver] = Field(default_factory=list)
     provenance: Provenance = Field(default_factory=Provenance)
 
     @model_validator(mode="after")
@@ -337,6 +358,11 @@ class OKRProgram(_Strict):
             for task_id in self.baseline.task_dates:
                 if task_id not in tasks:
                     issues.append(f"baseline references unknown task {task_id}")
+        _unique(issues, "risk driver", [row.id for row in self.risk_drivers])
+        for driver in self.risk_drivers:
+            for task_id in driver.task_ids:
+                if task_id not in tasks:
+                    issues.append(f"risk driver {driver.id} references unknown task {task_id}")
         if issues:
             raise ValueError("; ".join(issues))
         issues.extend(_graph_issues(self))

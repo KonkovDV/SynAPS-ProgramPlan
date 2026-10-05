@@ -1,9 +1,10 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
 <title>__TITLE__</title>
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#6b7280;--line:#e3e6eb;--crit:#d23f31;--ok:#1f8a4c;--warn:#c27c0e;--base:#c9ced6}
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#6b7280;--line:#e3e6eb;--crit:#d23f31;--ok:#1f8a4c;--warn:#c27c0e;--base:#c9ced6;--focus:#3b7dd8}
 *{box-sizing:border-box}body{margin:0;font:13px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
 header{padding:14px 20px;background:#1d2330;color:#fff}header h1{margin:0;font-size:18px;font-weight:600}
 header .sub{color:#b8c0cc;font-size:12px;margin-top:4px}
@@ -15,25 +16,31 @@ main{padding:14px 20px;display:grid;gap:14px}
 .kpi span{color:var(--mute);font-size:11px}
 .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
 select,button,input{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:#fff}
-button.active{background:#1d2330;color:#fff}
+button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}button.primary{background:#1d2330;color:#fff}
+:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
 table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
 th{background:#fafbfc;font-weight:600;cursor:pointer;position:sticky;top:0}
 .badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:600;color:#fff}
-.OPTIMAL,.FEASIBLE{background:var(--ok)}.HEURISTIC_FEASIBLE{background:#3b7dd8}.INFEASIBLE,.REJECTED,.ERROR{background:var(--crit)}
+.OPTIMAL,.FEASIBLE,.CLEAN{background:var(--ok)}.HEURISTIC_FEASIBLE{background:#3b7dd8}.INFEASIBLE,.REJECTED,.ERROR,.HARD{background:var(--crit)}.PRELIM{background:var(--warn)}
 .warnbox{border-left:4px solid var(--warn);background:#fff8eb;padding:6px 10px;margin:6px 0}
+.okbox{border-left:4px solid var(--ok);background:#eefaf2;padding:6px 10px;margin:6px 0}
+.errbox{border-left:4px solid var(--crit);background:#fdf0ee;padding:6px 10px;margin:6px 0}
 #gantt{overflow:auto;max-height:70vh;border:1px solid var(--line);position:relative}
 #gantt svg text{font-size:11px;fill:var(--ink)}
+#gantt.editing [data-move]{cursor:ew-resize}
 .tip{position:fixed;pointer-events:none;background:#1d2330;color:#fff;padding:8px 10px;border-radius:6px;max-width:420px;font-size:12px;display:none;z-index:9}
 .heat td{padding:0;width:18px;height:16px;border:1px solid #fff}.heat th{font-size:10px;padding:2px}
 .scroll{overflow:auto;max-height:420px}.mute{color:var(--mute)}.small{font-size:11px}
 .legend span{display:inline-flex;align-items:center;gap:4px;margin-right:12px}.sw{width:14px;height:8px;display:inline-block;border-radius:2px}
+.editbar{border:1px dashed var(--line);border-radius:6px;padding:6px 8px}
+.delta-bad{color:var(--crit);font-weight:600}.delta-good{color:var(--ok);font-weight:600}
 </style></head><body>
 <header><h1>__TITLE__</h1><div class="sub" id="sub"></div></header>
 <main>
-<section class="card" id="banner"></section>
+<section class="card" id="banner" aria-live="polite"></section>
 <section class="card"><h2>Сравнение вариантов плана</h2><div class="scroll"><table id="cmp"></table></div></section>
 <section class="card"><h2>Показатели варианта</h2>
-<div class="bar"><label>Вариант <select id="scenario"></select></label><span id="verdict"></span></div>
+<div class="bar"><label>Вариант <select id="scenario"></select></label><span id="verdict"></span><span id="downloads"></span></div>
 <div class="kpis" id="kpis"></div></section>
 <section class="card"><h2>Диаграмма Ганта</h2>
 <div class="bar">
@@ -44,8 +51,30 @@ th{background:#fafbfc;font-weight:600;cursor:pointer;position:sticky;top:0}
 <label><input type="checkbox" id="showBase" checked> исходный план</label>
 <label><input type="checkbox" id="showEdges"> связи</label>
 <label>Поиск <input id="q" size="16"></label></div>
-<div class="legend small"><span><i class="sw" style="background:#4c78a8"></i>работа</span><span><i class="sw" style="background:var(--crit)"></i>критическая</span><span><i class="sw" style="background:var(--base)"></i>исходный план</span><span>◆ веха</span><span style="color:var(--crit)">▼ директивный срок</span><span style="color:var(--warn)">▽ плановый срок</span></div>
+<div class="bar editbar">
+<label><input type="checkbox" id="editMode"> <b>режим правки</b></label>
+<span class="small mute" id="editHelp">Перетащите работу мышью или выберите её (клик / Tab) и сдвигайте клавишами ← → (Shift — на 5 р.д.). Шаг — рабочий день; начатые и выполненные работы не двигаются.</span>
+<button id="editUndo" disabled>отменить шаг</button><button id="editReset" disabled>сбросить правки</button>
+<button id="editDownload" disabled>скачать правки (JSON)</button>
+<select id="editMode2" hidden aria-label="Как пересчитывать"><option value="stable">минимум перестановок</option><option value="optimise">переоптимизировать сроки</option></select>
+<button id="editRepair" class="primary" hidden disabled>пересчитать план с правками</button>
+<span id="editState" class="small"></span></div>
+<div id="editResult" aria-live="polite"></div>
+<div class="legend small"><span><i class="sw" style="background:#4c78a8"></i>работа</span><span><i class="sw" style="background:var(--crit)"></i>критическая</span><span><i class="sw" style="background:var(--base)"></i>исходный план</span><span><i class="sw" style="border:2px solid #111"></i>правка</span><span>◆ веха</span><span style="color:var(--crit)">▼ директивный срок</span><span style="color:var(--warn)">▽ плановый срок</span></div>
 <div id="gantt"></div></section>
+<section class="card" id="decCard" hidden><h2>Решение по варианту</h2>
+<div class="bar"><span id="whoami" class="small"></span>
+<input id="decReason" size="60" maxlength="2000" placeholder="обоснование решения (обязательно)" aria-label="обоснование решения">
+<button id="decAccept" class="primary">принять вариант</button><button id="decReject">отклонить вариант</button><span id="decState" class="small"></span></div>
+<div class="small mute" id="journalState"></div>
+<div class="scroll"><table id="journal"></table></div></section>
+<section class="card" id="riskCard" hidden><h2>Риск срыва сроков (Монте-Карло по принятому плану)</h2>
+<div id="riskHead"></div>
+<div class="bar"><b>Драйверы риска</b><span class="small mute">насколько раньше станет P80 окончания программы, если риск устранить</span></div>
+<div id="riskDrivers"></div>
+<div class="scroll"><table id="riskMs"></table></div>
+<h2 style="margin-top:12px">Индекс критичности</h2><div class="scroll"><table id="riskCrit"></table></div>
+<div class="small mute" id="riskNote"></div></section>
 <section class="card"><h2>Загрузка ресурсов</h2>
 <div class="bar"><label>Ресурс <select id="res"></select></label><span class="mute small">Тепловая карта: пиковая загрузка за месяц, % от доступного; клик по строке — дневной профиль</span></div>
 <div id="profile"></div><div class="scroll"><table class="heat" id="heat"></table></div></section>
@@ -53,72 +82,192 @@ th{background:#fafbfc;font-weight:600;cursor:pointer;position:sticky;top:0}
 <section class="card"><h2>Конфликты исходных планов (до оптимизации)</h2><div class="scroll"><table id="conf"></table></div></section>
 <section class="card"><h2>Нарушения и предупреждения варианта</h2><div class="scroll"><table id="viol"></table></div></section>
 <section class="card"><h2>Доказательная база</h2><pre id="evidence" class="small" style="white-space:pre-wrap"></pre></section>
-</main><div class="tip" id="tip"></div>
+</main><div class="tip" id="tip" role="tooltip"></div>
 <script type="application/json" id="data">__DATA__</script>
 <script>
 "use strict";
-const D=JSON.parse(document.getElementById("data").textContent);
-const $=id=>document.getElementById(id), esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let D=JSON.parse(document.getElementById("data").textContent);
+const $=id=>document.getElementById(id), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const DAY=864e5, toD=s=>new Date(s+"T00:00:00Z"), fmt=s=>s?s.slice(8,10)+"."+s.slice(5,7)+"."+s.slice(0,4):"—";
+const pct=v=>v==null?"—":(v*100).toFixed(0)+"%";
 const PCOL=["#4c78a8","#59a14f","#9c755f","#b07aa1","#f28e2b","#76b7b2","#edc948","#ff9da7","#86bcb6","#8cd17d"];
-const projColor={};D.projects.forEach((p,i)=>projColor[p.id]=PCOL[i%PCOL.length]);
-const projName=Object.fromEntries(D.projects.map(p=>[p.id,p.code]));
-const resName=Object.fromEntries(D.resources.map(r=>[r.id,r.code]));
-$("sub").textContent=`Дата статуса ${fmt(D.program.status_date)} · данные: ${D.program.provenance} · SynAPS-ProgramPlan ${D.versions.version} · SynAPS ${String(D.versions.synaps).slice(0,12)} · TRL ${D.versions.trl} (${D.versions.claim_level})`;
-(function banner(){let h="";
+let projColor={},projName={},resName={};
+const EDIT={},HIST={};let selected=null,checkTimer=null,checkSeq=0,G={pxd:1};
+const WB=()=>D.workbench&&D.program?D.workbench:null, may=a=>!!(WB()&&WB().may.includes(a));
+
+function bisect(iso,right){let lo=0,hi=D.axis.length;while(lo<hi){const m=(lo+hi)>>1;if(right?D.axis[m]<=iso:D.axis[m]<iso)lo=m+1;else hi=m}return lo}
+const idxOn=iso=>bisect(iso,false), bAfter=iso=>bisect(iso,true);
+const snap=iso=>D.axis[Math.min(idxOn(iso),D.axis.length-1)];
+const addDays=(iso,n)=>new Date(toD(iso).getTime()+n*DAY).toISOString().slice(0,10);
+
+async function api(path,opts={},raw=false){const h=Object.assign({"Content-Type":"application/json"},opts.headers||{});const t=sessionStorage.getItem("spp_token");if(t)h.Authorization="Bearer "+t;
+ const r=await fetch(path,Object.assign({},opts,{headers:h,credentials:"omit",cache:"no-store"}));
+ if(r.status===401){const t2=prompt("Токен доступа к рабочему месту (выдаёт администратор пилота):");if(t2){sessionStorage.setItem("spp_token",t2.trim());return api(path,opts,raw)}throw new Error("нужен токен доступа")}
+ if(raw){if(!r.ok)throw new Error("HTTP "+r.status);return r.blob()}
+ let body=null;try{body=await r.json()}catch(e){}
+ if(!r.ok){const d=body&&body.detail;throw new Error(typeof d==="string"?d:d&&d.claim?`вердикт ${d.claim}: ${d.detail||""}`:JSON.stringify(d))}
+ return body}
+function save(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+
+function boot(data,pick){D=data;
+ projColor={};D.projects.forEach((p,i)=>projColor[p.id]=PCOL[i%PCOL.length]);
+ projName=Object.fromEntries(D.projects.map(p=>[p.id,p.code]));resName=Object.fromEntries(D.resources.map(r=>[r.id,r.code]));
+ $("sub").textContent=`Дата статуса ${fmt(D.program.status_date)} · данные: ${D.program.provenance} · SynAPS-ProgramPlan ${D.versions.version} · SynAPS ${String(D.versions.synaps).slice(0,12)} · TRL ${D.versions.trl} (${D.versions.claim_level})`+(WB()?` · рабочее место: ${WB().user} (${WB().role})`:"");
+ banner();cmp();
+ const okScen=D.scenarios.filter(s=>s.ok);
+ $("scenario").innerHTML=D.scenarios.map(s=>`<option value="${esc(s.id)}" ${s.ok?"":"disabled"}>${esc(s.label)}${s.ok?"":" — "+s.claim}</option>`).join("");
+ if(okScen.length)$("scenario").value=pick&&okScen.some(s=>s.id===pick)?pick:okScen[0].id;
+ $("proj").innerHTML=`<option value="">все</option>`+D.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.code)} — ${esc(p.name)}</option>`).join("");
+ $("res").innerHTML=D.resources.map(r=>`<option value="${esc(r.id)}">${esc(r.code)} — ${esc(r.name)}</option>`).join("");
+ $("decCard").hidden=!WB();$("editRepair").hidden=$("editMode2").hidden=!may("repair");
+ $("decAccept").disabled=$("decReject").disabled=!may("decide");
+ if(WB())$("whoami").textContent=`${WB().user} · роль ${({planner:"планировщик",manager:"руководитель ОКР",observer:"наблюдатель"})[WB().role]||WB().role}`;
+ risk();conf();all();if(WB())journal()}
+function banner(){let h="";
  if(D.provisional_years.length)h+=`<div class="warnbox">Производственный календарь на ${D.provisional_years.join(", ")} не утверждён постановлением Правительства РФ — использовано правило ст. 112 ТК РФ (предварительно).</div>`;
  if(D.program.provenance!=="customer_anonymized")h+=`<div class="warnbox">Данные программы: ${esc(D.program.provenance)}. Результаты не являются результатами на данных заказчика.</div>`;
  if(D.witness&&D.witness.infeasible)h+=`<div class="warnbox"><b>Программа невыполнима при текущих требованиях.</b> ${esc(D.witness.text)}<ul>${(D.witness.witness||[]).map(w=>`<li>${esc(w.text)}${w.suggestion?" → "+esc(w.suggestion):""}</li>`).join("")}</ul>${D.witness.minimal?"":"<span class='mute'>(набор может быть не минимальным: часть проверок не завершилась за лимит времени)</span>"}</div>`;
- h+=`<div class="small mute">План публикуется только если решатель вернул допустимое решение, проверка ядра SynAPS чиста и независимая доменная проверка не нашла жёстких нарушений.</div>`;
- $("banner").innerHTML=h})();
-(function cmp(){const rows=D.comparison;const cols=[["label","Вариант"],["claim","Вердикт"],["program_finish","Окончание программы"],["late_milestones","Просрочено вех"],["tardiness_wd","Просрочка, р.д."],["moved_tasks","Сдвинуто работ"],["shift_sum_wd","Σ сдвигов, р.д."],["shift_max_wd","Макс. сдвиг"],["peak_load_pct","Пик загрузки, %"]];
+ h+=`<div class="small mute">План публикуется только если решатель вернул допустимое решение, проверка ядра SynAPS чиста и независимая доменная проверка не нашла жёстких нарушений. Ручные правки проверяются той же независимой проверкой.</div>`;
+ $("banner").innerHTML=h}
+function cmp(){const rows=D.comparison;const cols=[["label","Вариант"],["claim","Вердикт"],["program_finish","Окончание программы"],["late_milestones","Просрочено вех"],["tardiness_wd","Просрочка, р.д."],["moved_tasks","Сдвинуто работ"],["shift_sum_wd","Σ сдвигов, р.д."],["shift_max_wd","Макс. сдвиг"],["peak_load_pct","Пик загрузки, %"]];
  const best={};["late_milestones","tardiness_wd","moved_tasks","shift_sum_wd","peak_load_pct"].forEach(k=>{const v=rows.filter(r=>r.ok&&r[k]!=null).map(r=>r[k]);if(v.length)best[k]=Math.min(...v)});
  $("cmp").innerHTML="<tr>"+cols.map(c=>`<th>${c[1]}</th>`).join("")+"</tr>"+rows.map(r=>"<tr>"+cols.map(([k])=>{let v=r[k];
-  if(k==="claim")v=`<span class="badge ${v}">${v}</span>`+(r.duplicate_of?` <span class="mute small">= ${esc(r.duplicate_of)}</span>`:"");
+  if(k==="claim")v=`<span class="badge ${esc(v)}">${esc(v)}</span>`+(r.duplicate_of?` <span class="mute small">= ${esc(r.duplicate_of)}</span>`:"");
   else if(k==="program_finish")v=fmt(v);else v=v==null?"—":esc(v);
-  const b=best[k]!=null&&r[k]===best[k]&&r.ok?" style='font-weight:700;color:var(--ok)'":"";return `<td${b}>${v}</td>`}).join("")+"</tr>").join("")})();
-const okScen=D.scenarios.filter(s=>s.ok);
-$("scenario").innerHTML=D.scenarios.map(s=>`<option value="${esc(s.id)}" ${s.ok?"":"disabled"}>${esc(s.label)}${s.ok?"":" — "+s.claim}</option>`).join("");
-if(okScen.length)$("scenario").value=okScen[0].id;
-D.projects.forEach(p=>$("proj").insertAdjacentHTML("beforeend",`<option value="${esc(p.id)}">${esc(p.code)} — ${esc(p.name)}</option>`));
-D.resources.forEach(r=>$("res").insertAdjacentHTML("beforeend",`<option value="${esc(r.id)}">${esc(r.code)} — ${esc(r.name)}</option>`));
+  const b=best[k]!=null&&r[k]===best[k]&&r.ok?" style='font-weight:700;color:var(--ok)'":"";return `<td${b}>${v}</td>`}).join("")+"</tr>").join("")}
 const cur=()=>D.scenarios.find(s=>s.id===$("scenario").value);
-function kpis(){const s=cur();if(!s){$("kpis").innerHTML="<div class='mute'>Нет принятого плана: все варианты отклонены или невыполнимы.</div>";return}
- const k=s.kpi||{};$("verdict").innerHTML=`<span class="badge ${s.claim}">${s.claim}</span> <span class="small mute">${esc(s.detail||"")}</span>`;
- const peak=Math.max(0,...(k.resources||[]).map(r=>r.peak_pct));const items=[["Окончание программы",fmt(k.program_finish)],["Просрочено вех/сроков",k.late_count],["Суммарная просрочка, р.д.",k.tardiness_wd],["Сдвинуто работ",k.moved_count],["Σ сдвигов, р.д.",k.shift_sum_wd],["Пик загрузки ресурса, %",peak.toFixed(0)]];
- Object.entries(k.project_finish||{}).forEach(([p,d])=>items.push(["Окончание "+(projName[p]||p),fmt(d)]));
+function kpis(){const s=cur();if(!s){$("kpis").innerHTML="<div class='mute'>Нет принятого плана: все варианты отклонены или невыполнимы.</div>";$("verdict").innerHTML="";$("downloads").innerHTML="";return}
+ const k=s.kpi||{};$("verdict").innerHTML=`<span class="badge ${esc(s.claim)}">${esc(s.claim)}</span> <span class="small mute">${esc(s.detail||"")}</span>`;
+ $("downloads").innerHTML=WB()?`<button id="dlJson">план (JSON)</button> <button id="dlXml">план для MS Project (XML)</button>`:"";
+ if(WB()){$("dlJson").onclick=()=>api(`/api/plans/${encodeURIComponent(s.id)}`,{},true).then(b=>save(b,`plan_${s.id}.json`)).catch(e=>alert(e.message));
+  $("dlXml").onclick=()=>api(`/api/plans/${encodeURIComponent(s.id)}/mspdi`,{},true).then(b=>save(b,`plan_${s.id}.xml`)).catch(e=>alert(e.message))}
+ const items=kpiItems(k);Object.entries(k.project_finish||{}).forEach(([p,d])=>items.push(["Окончание "+(projName[p]||p),fmt(d)]));
  $("kpis").innerHTML=items.map(([a,b])=>`<div class="kpi"><b>${esc(b)}</b><span>${esc(a)}</span></div>`).join("")}
+const peakOf=k=>Math.max(0,...((k&&k.resources)||[]).map(r=>r.peak_pct));
+function kpiItems(k){return [["Окончание программы",fmt(k.program_finish)],["Просрочено вех/сроков",k.late_count],["Суммарная просрочка, р.д.",k.tardiness_wd],["Сдвинуто работ",k.moved_count],["Σ сдвигов, р.д.",k.shift_sum_wd],["Пик загрузки ресурса, %",peakOf(k).toFixed(0)]]}
 const tip=$("tip");function showTip(e,h){tip.innerHTML=h;tip.style.display="block";const x=Math.min(e.clientX+14,innerWidth-440);tip.style.left=x+"px";tip.style.top=(e.clientY+14)+"px"}function hideTip(){tip.style.display="none"}
 function taskTip(t){let h=`<b>${esc(t.name)}</b><br>${esc(projName[t.project]||t.project)} · ${t.milestone?"веха "+fmt(t.finish):fmt(t.start)+" — "+fmt(t.finish)+" ("+t.duration+" р.д.)"}`;
+ if(t.edited)h+=`<br><b>Правка:</b> было ${t.milestone?fmt(t.orig.finish):fmt(t.orig.start)+" — "+fmt(t.orig.finish)}`;
  if(t.ref_start)h+=`<br>Исходный план: ${fmt(t.ref_start)} — ${fmt(t.ref_finish)}`;if(t.shift)h+=`<br>Сдвиг: ${t.shift>0?"+":""}${t.shift} р.д.`;
  if(t.float!=null)h+=`<br>Резерв: ${t.float} р.д.${t.critical?" · <b>критическая</b>":""}`;if(t.deadline)h+=`<br>Директивный срок: ${fmt(t.deadline)}`;else if(t.due)h+=`<br>Плановый срок: ${fmt(t.due)}`;
  const res=t.demands.filter(d=>d.resource).map(d=>resName[d.resource]+(d.skill?" ("+d.skill+")":"")).join(", ");if(res)h+=`<br>Ресурсы: ${esc(res)}`;
+ if(t.status!=="PLANNED")h+=`<br><i>${t.status==="DONE"?"выполнена":"начата"} — не переносится</i>`;
  if(t.why)h+=`<hr style="border-color:#475063">${esc(t.why.text)}`+(t.why.counterfactual&&t.why.counterfactual.text?`<br><i>${esc(t.why.counterfactual.text)}</i>`:"");return h}
+
+/* ---- edit mode: moves are {task_id: new start (a milestone: its date)} on working days ---- */
+const edits=()=>{const s=cur();return s?(EDIT[s.id]??={}):{}};
+const anchor=t=>t.milestone?t.finish:t.start;
+function place(t,iso){if(t.milestone)return {start:iso,finish:iso};const i=idxOn(iso);return {start:D.axis[i],finish:D.axis[Math.min(D.axis.length-1,i+t.duration-1)]}}
+function patched(s){const m=EDIT[s.id]||{};return s.tasks.map(t=>m[t.id]?Object.assign({},t,place(t,m[t.id]),{edited:true,orig:t}):t)}
+function setMove(t,iso){const s=cur(),m=edits(),orig=s.tasks.find(x=>x.id===t.id);(HIST[s.id]??=[]).push(Object.assign({},m));
+ if(iso===anchor(orig))delete m[t.id];else m[t.id]=iso;selected=t.id;gantt();editChanged()}
+function nudge(step){const s=cur();if(!s||!selected)return;const t=patched(s).find(x=>x.id===selected);if(!t||t.status!=="PLANNED")return;
+ const i=Math.max(0,Math.min(D.axis.length-1,idxOn(anchor(t))+step));setMove(t,D.axis[i])}
+function editChanged(){const s=cur(),n=Object.keys(edits()).length;
+ $("editState").textContent=n?`правок: ${n}`:"";["editReset","editDownload"].forEach(id=>$(id).disabled=!n);$("editUndo").disabled=!(s&&(HIST[s.id]||[]).length);
+ $("editRepair").disabled=!n||!may("repair");$("decAccept").disabled=!may("decide")||n>0;
+ clearTimeout(checkTimer);if(!n){$("editResult").innerHTML="";return}
+ checkTimer=setTimeout(WB()?remoteCheck:localCheck,WB()?250:0)}
+function kpiDelta(k0,k){const rows=[["Окончание программы",k0.program_finish,k.program_finish,true],["Просрочено вех/сроков",k0.late_count,k.late_count],["Суммарная просрочка, р.д.",k0.tardiness_wd,k.tardiness_wd],["Сдвинуто работ",k0.moved_count,k.moved_count],["Пик загрузки ресурса, %",+peakOf(k0).toFixed(0),+peakOf(k).toFixed(0)]];
+ return `<table class="small" style="width:auto"><tr><th>Показатель</th><th>Вариант</th><th>С правками</th></tr>`+rows.map(([l,a,b,isDate])=>{const worse=isDate?(b>a):(b>a),better=isDate?(b<a):(b<a);
+  return `<tr><td>${l}</td><td>${isDate?fmt(a):esc(a)}</td><td class="${worse?"delta-bad":better?"delta-good":""}">${isDate?fmt(b):esc(b)}</td></tr>`}).join("")+"</table>"}
+function violList(vs){const hard=vs.filter(v=>v.severity==="hard"),rest=vs.filter(v=>v.severity!=="hard");const show=hard.concat(rest).slice(0,30);
+ return show.length?`<ul class="small">${show.map(v=>`<li><b>${esc(v.code)}</b> ${v.severity==="hard"?"<span class='badge HARD'>жёсткое</span> ":""}${esc(v.message)}</li>`).join("")}</ul>`+(vs.length>30?`<div class="small mute">и ещё ${vs.length-30}</div>`:""):""}
+async function remoteCheck(){const s=cur(),seq=++checkSeq;$("editResult").innerHTML=`<div class="small mute">Проверка…</div>`;
+ try{const r=await api("/api/check",{method:"POST",body:JSON.stringify({scenario:s.id,moves:edits()})});if(seq!==checkSeq)return;
+  $("editResult").innerHTML=`<div class="${r.ok?"okbox":"errbox"}"><span class="badge ${r.ok?"CLEAN":"HARD"}">${r.ok?"жёстких нарушений нет":"жёстких нарушений: "+r.hard}</span> <span class="small mute">независимая проверка на сервере (те же правила, что для оптимизированного плана)</span>${kpiDelta(s.kpi,r.kpi)}${violList(r.violations)}</div>`}
+ catch(e){if(seq===checkSeq)$("editResult").innerHTML=`<div class="errbox">${esc(e.message)}</div>`}}
+function localCheck(){const s=cur(),ts=patched(s),by=Object.fromEntries(ts.map(t=>[t.id,t])),m=edits(),out=[];
+ const S=t=>t.milestone?bAfter(t.finish):idxOn(t.start),E=t=>t.milestone?bAfter(t.finish):bAfter(t.finish);
+ D.edges.forEach(e=>{const a=by[e.src],b=by[e.dst];if(!a||!b||!(m[e.src]||m[e.dst]))return;const x=e.type[0]==="F"?E(a):S(a),y=e.type[1]==="F"?E(b):S(b);
+  if(y<x+e.lag)out.push({severity:"hard",code:`PRECEDENCE_${e.type}_BROKEN`,message:`${e.type} «${a.name}» → «${b.name}»: не хватает ${x+e.lag-y} р.д.`});
+  if(e.max_lag!=null&&y>x+e.max_lag)out.push({severity:"hard",code:"MAX_LAG_BROKEN",message:`«${a.name}» → «${b.name}»: превышен максимальный лаг на ${y-x-e.max_lag} р.д.`})});
+ ts.forEach(t=>{if(!m[t.id])return;if(t.deadline&&E(t)>bAfter(t.deadline))out.push({severity:"hard",code:"DEADLINE_MISSED",message:`«${t.name}» позже директивного срока ${fmt(t.deadline)}`});
+  else if(t.due&&E(t)>bAfter(t.due))out.push({severity:"kpi",code:"DUE_MISSED",message:`«${t.name}» позже планового срока ${fmt(t.due)}`});
+  const p=D.projects.find(p=>p.id===t.project);if(p&&p.deadline&&E(t)>bAfter(p.deadline))out.push({severity:"hard",code:"DEADLINE_MISSED",message:`«${t.name}» позже срока ОКР ${fmt(p.deadline)}`})});
+ const touched=new Set();ts.forEach(t=>{if(m[t.id])t.demands.forEach(d=>d.resource&&touched.add(d.resource))});
+ touched.forEach(rid=>{const use=new Array(D.axis.length).fill(0),A=D.availability[rid]||[];ts.forEach(t=>{if(t.milestone||t.status==="DONE")return;t.demands.forEach(d=>{if(d.resource!==rid)return;for(let i=idxOn(t.start);i<E(t);i++)use[i]+=d.units})});
+  let days=0,first=null;use.forEach((u,i)=>{if(u>(A[i]||0)){days++;first??=i}});if(days)out.push({severity:"hard",code:"CAPACITY_EXCEEDED",message:`${resName[rid]||rid}: перегрузка ${days} р.д., первая ${fmt(D.axis[first])}`})});
+ const hard=out.filter(v=>v.severity==="hard").length;
+ $("editResult").innerHTML=`<div class="${hard?"errbox":"warnbox"}"><span class="badge PRELIM">предварительно</span> <span class="small">Проверка в браузере: связи, директивные сроки, загрузка именованных ресурсов — ${hard?"жёстких нарушений: "+hard:"нарушений не найдено"}. Окончательный вердикт даёт независимая проверка: <code>SynAPS-ProgramPlan check program.json plan.json --moves правки.json</code> или рабочее место (<code>serve</code>).</span>${violList(out)}</div>`}
 function gantt(){const s=cur(),box=$("gantt");if(!s){box.innerHTML="";return}
- const proj=$("proj").value,oc=$("onlyCrit").checked,om=$("onlyMoved").checked,base=$("showBase").checked,q=$("q").value.toLowerCase();
- let tasks=s.tasks.filter(t=>(!proj||t.project===proj)&&(!oc||t.critical)&&(!om||t.shift)&&(!q||t.name.toLowerCase().includes(q)||t.id.toLowerCase().includes(q)));
- const all=s.tasks.flatMap(t=>[t.start,t.finish,t.ref_start,t.ref_finish,t.deadline].filter(Boolean)).map(toD);
+ const proj=$("proj").value,oc=$("onlyCrit").checked,om=$("onlyMoved").checked,base=$("showBase").checked,q=$("q").value.toLowerCase(),ed=$("editMode").checked;
+ box.classList.toggle("editing",ed);
+ const view=patched(s);
+ let tasks=view.filter(t=>(!proj||t.project===proj)&&(!oc||t.critical)&&(!om||t.shift||t.edited)&&(!q||t.name.toLowerCase().includes(q)||t.id.toLowerCase().includes(q)));
+ const all=view.flatMap(t=>[t.start,t.finish,t.ref_start,t.ref_finish,t.deadline].filter(Boolean)).map(toD);
  const t0=new Date(Math.min(...all,toD(D.program.status_date))-14*DAY),t1=new Date(Math.max(...all)+30*DAY);
- const LW=300,RH=20,HH=34,z=$("zoom").value,pxd=z==="fit"?Math.max(0.2,(box.clientWidth-LW-24)/((t1-t0)/DAY)):+z;
+ const LW=300,RH=20,HH=34,z=$("zoom").value,pxd=z==="fit"?Math.max(0.2,(box.clientWidth-LW-24)/((t1-t0)/DAY)):+z;G.pxd=pxd;
  const X=d=>Math.round((toD(d)-t0)/DAY*pxd),mstep=Math.max(1,Math.ceil(42/(30.4*pxd)));
  const rows=[];D.projects.forEach(p=>{const ts=tasks.filter(t=>t.project===p.id);if(!ts.length)return;rows.push({hdr:p,ts});ts.sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0).forEach(t=>rows.push({t}))});
- const W=LW+Math.round((t1-t0)/DAY*pxd),H=HH+rows.length*RH+10;const pos={};let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+ const W=LW+Math.round((t1-t0)/DAY*pxd),H=HH+rows.length*RH+10;const pos={};let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Диаграмма Ганта">`;
  for(let d=new Date(Date.UTC(t0.getUTCFullYear(),t0.getUTCMonth(),1));d<t1;d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1))){const x=LW+Math.round((d-t0)/DAY*pxd);if(x<LW)continue;
   svg+=`<line x1="${x}" y1="${HH-14}" x2="${x}" y2="${H}" stroke="#eef0f3"/>`;const m=d.getUTCMonth();if((d.getUTCFullYear()*12+m)%mstep===0)svg+=`<text x="${x+3}" y="${HH-18}">${String(m+1).padStart(2,"0")}.${String(d.getUTCFullYear()).slice(2)}</text>`}
  const sx=LW+X(D.program.status_date);svg+=`<line x1="${sx}" y1="${HH-14}" x2="${sx}" y2="${H}" stroke="#3b7dd8" stroke-dasharray="4 3"/><text x="${sx+3}" y="${HH-4}" style="fill:#3b7dd8">статус</text>`;
  rows.forEach((r,i)=>{const y=HH+i*RH;if(r.hdr){svg+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#f2f4f7"/><text x="6" y="${y+14}" style="font-weight:700">${esc(r.hdr.code)} — ${esc(r.hdr.name)}</text>`;
    if(r.hdr.deadline){const x=LW+X(r.hdr.deadline);svg+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${H}" stroke="var(--crit)" stroke-width="1" stroke-dasharray="2 3" opacity=".6"/>`}return}
   const t=r.t,c=t.critical?"var(--crit)":projColor[t.project],lbl=t.name.length>44?t.name.slice(0,43)+"…":t.name;
-  svg+=`<text x="14" y="${y+14}" data-id="${esc(t.id)}">${esc(lbl)}</text>`;
+  svg+=`<text x="14" y="${y+14}" data-id="${esc(t.id)}"${t.edited?" style='font-weight:700'":""}>${t.edited?"✎ ":""}${esc(lbl)}</text>`;
   if(base&&t.ref_start){const a=LW+X(t.ref_start),b=LW+X(t.ref_finish)+(t.milestone?0:pxd);svg+=t.milestone?`<path d="M${a} ${y+14}l4 4-4 4-4-4z" fill="var(--base)"/>`:`<rect x="${a}" y="${y+13}" width="${Math.max(2,b-a)}" height="4" fill="var(--base)"/>`}
+  if(t.edited){const o=t.orig,a=LW+X(o.start),b=LW+X(o.finish)+(o.milestone?0:pxd);svg+=o.milestone?`<path d="M${a} ${y+2}l6 7-6 7-6-7z" fill="none" stroke="#9aa3b2" stroke-dasharray="2 2"/>`:`<rect x="${a}" y="${y+3}" width="${Math.max(2,b-a)}" height="10" rx="2" fill="none" stroke="#9aa3b2" stroke-dasharray="2 2"/>`}
   const a=LW+X(t.start),b=LW+X(t.finish)+(t.milestone?0:pxd);pos[t.id]={a,b,y:y+8};
-  if(t.milestone)svg+=`<path d="M${a} ${y+2}l6 7-6 7-6-7z" fill="${c}" data-id="${esc(t.id)}"/>`;
-  else svg+=`<rect x="${a}" y="${y+3}" width="${Math.max(2,b-a)}" height="10" rx="2" fill="${c}" opacity="${t.status==="DONE"?.45:.9}" data-id="${esc(t.id)}"/>`;
+  const mv=ed&&t.status==="PLANNED",sel=selected===t.id&&ed,stroke=t.edited||sel?` stroke="${sel?"var(--focus)":"#111"}" stroke-width="2"`:"";
+  const attrs=`data-id="${esc(t.id)}"${mv?` data-move="1" tabindex="0" role="button" aria-label="${esc(t.name)}: ${t.milestone?fmt(t.finish):fmt(t.start)+" — "+fmt(t.finish)}"`:""}${stroke}`;
+  if(t.milestone)svg+=`<path d="M${a} ${y+2}l6 7-6 7-6-7z" fill="${c}" ${attrs}/>`;
+  else svg+=`<rect x="${a}" y="${y+3}" width="${Math.max(2,b-a)}" height="10" rx="2" fill="${c}" opacity="${t.status==="DONE"?.45:.9}" ${attrs}/>`;
   if(t.deadline){const x=LW+X(t.deadline);svg+=`<path d="M${x-4} ${y}h8l-4 6z" fill="var(--crit)"/>`}else if(t.due){const x=LW+X(t.due);svg+=`<path d="M${x-4} ${y}h8l-4 6z" fill="none" stroke="var(--warn)"/>`}});
  if($("showEdges").checked)D.edges.forEach(e=>{const p=pos[e.src],q2=pos[e.dst];if(!p||!q2)return;const x1=e.type[0]==="F"?p.b:p.a,x2=e.type[1]==="F"?q2.b:q2.a;
-  svg+=`<path d="M${x1} ${p.y}h4V${q2.y}H${x2}" fill="none" stroke="#9aa3b2" stroke-width="1" marker-end=""/>`});
- svg+=`<line x1="${LW-1}" y1="0" x2="${LW-1}" y2="${H}" stroke="var(--line)"/></svg>`;box.innerHTML=svg;
- const byId=Object.fromEntries(s.tasks.map(t=>[t.id,t]));box.querySelectorAll("[data-id]").forEach(el=>{el.addEventListener("mousemove",e=>showTip(e,taskTip(byId[el.dataset.id])));el.addEventListener("mouseleave",hideTip)})}
+  svg+=`<path d="M${x1} ${p.y}h4V${q2.y}H${x2}" fill="none" stroke="#9aa3b2" stroke-width="1"/>`});
+ svg+=`<line x1="${LW-1}" y1="0" x2="${LW-1}" y2="${H}" stroke="var(--line)"/></svg>`;const keep=box.scrollLeft,keepT=box.scrollTop;box.innerHTML=svg;box.scrollLeft=keep;box.scrollTop=keepT;
+ const byId=Object.fromEntries(view.map(t=>[t.id,t]));
+ box.querySelectorAll("[data-id]").forEach(el=>{el.addEventListener("mousemove",e=>showTip(e,taskTip(byId[el.dataset.id])));el.addEventListener("mouseleave",hideTip)});
+ box.querySelectorAll("[data-move]").forEach(el=>{const t=byId[el.dataset.id];
+  el.addEventListener("focus",()=>{if(selected!==t.id){selected=t.id}});
+  el.addEventListener("pointerdown",e=>{if(e.button!==0)return;e.preventDefault();hideTip();try{el.setPointerCapture(e.pointerId)}catch(_){}const x0=e.clientX;let dx=0;
+   const move=ev=>{dx=ev.clientX-x0;el.setAttribute("transform",`translate(${dx},0)`)};
+   const up=()=>{removeEventListener("pointermove",move);removeEventListener("pointerup",up);el.removeAttribute("transform");
+    const days=Math.round(dx/G.pxd);if(days)setMove(t,snap(addDays(anchor(t),days)));else{selected=t.id;gantt()}};
+   addEventListener("pointermove",move);addEventListener("pointerup",up)})});
+ if(ed&&selected){const el=box.querySelector(`[data-move][data-id="${CSS.escape(selected)}"]`);if(el&&document.activeElement!==el&&document.activeElement===document.body)el.focus({preventScroll:true})}}
+addEventListener("keydown",e=>{if(!$("editMode").checked||!selected)return;const tag=(e.target.tagName||"").toLowerCase();if(tag==="input"||tag==="select"||tag==="textarea")return;
+ if(e.key==="ArrowRight"||e.key==="ArrowLeft"){e.preventDefault();nudge((e.key==="ArrowRight"?1:-1)*(e.shiftKey?5:1));const el=$("gantt").querySelector(`[data-move][data-id="${CSS.escape(selected)}"]`);if(el)el.focus({preventScroll:true})}
+ else if(e.key==="Escape"){selected=null;gantt()}});
+$("editMode").addEventListener("change",()=>{selected=null;gantt()});
+$("editUndo").addEventListener("click",()=>{const s=cur(),h=HIST[s.id]||[];if(!h.length)return;EDIT[s.id]=h.pop();gantt();editChanged()});
+$("editReset").addEventListener("click",()=>{const s=cur();(HIST[s.id]??=[]).push(Object.assign({},edits()));EDIT[s.id]={};gantt();editChanged()});
+$("editDownload").addEventListener("click",()=>{const s=cur();const body={scenario:s.id,plan_hash:(s.evidence||{}).plan_hash||null,moves:edits()};
+ save(new Blob([JSON.stringify(body,null,1)],{type:"application/json"}),`edits_${s.id}.json`)});
+$("editRepair").addEventListener("click",async()=>{const s=cur(),btn=$("editRepair");btn.disabled=true;$("editResult").insertAdjacentHTML("afterbegin",`<div class="small mute" id="repairing">Пересчёт: правки закреплены, остальные работы перестраиваются…</div>`);
+ try{const r=await api("/api/repair",{method:"POST",body:JSON.stringify({scenario:s.id,moves:edits(),mode:$("editMode2").value})});EDIT[s.id]={};HIST[s.id]=[];const d=await api("/api/data");boot(d,r.scenario);
+  const how=r.mode==="stable"?"с минимумом перестановок":r.requested_mode==="stable"?"с переоптимизацией сроков: без перестановок других работ правка невыполнима":"с переоптимизацией сроков";
+  $("editResult").innerHTML=`<div class="okbox">Новый вариант <b>${esc(r.scenario)}</b> построен ${esc(how)}, принят проверкой (${esc(r.claim)}) и добавлен в сравнение. Решение о нём — в разделе «Решение по варианту».</div>`}
+ catch(e){const el=$("repairing");if(el)el.remove();$("editResult").insertAdjacentHTML("afterbegin",`<div class="errbox">План с этими правками не принят: ${esc(e.message)}. Измените правки или отмените их.</div>`);btn.disabled=false}});
+
+/* ---- decisions journal (workbench only) ---- */
+async function decide(action){const s=cur(),reason=$("decReason").value.trim();if(!s)return;if(reason.length<3){$("decState").textContent="укажите обоснование";$("decReason").focus();return}
+ try{const r=await api("/api/decisions",{method:"POST",body:JSON.stringify({scenario:s.id,action,reason})});$("decState").textContent=`записано №${r.seq}`;$("decReason").value="";journal()}
+ catch(e){$("decState").textContent=e.message}}
+$("decAccept").addEventListener("click",()=>decide("accept"));$("decReject").addEventListener("click",()=>decide("reject"));
+async function journal(){try{const r=await api("/api/decisions");const ok=r.integrity.ok;
+ $("journalState").innerHTML=`Журнал решений: ${r.integrity.records} записей · целостность цепочки: ${ok?"<span class='badge CLEAN'>проверена</span>":`<span class='badge HARD'>нарушена в записи ${esc(r.integrity.broken_at)}</span> ${esc(r.integrity.reason)}`}`;
+ const names={accept:"принят",reject:"отклонён",repair:"пересчёт с правками"};
+ const rows=r.records.slice().reverse().map(x=>({seq:x.seq,at:x.at.replace("T"," ").slice(0,19),user:x.user,role:x.role,action:names[x.action]||x.action,scenario:x.scenario_id,hash:(x.plan_hash||"—").slice(0,12),reason:x.reason}));
+ if(!rows.length){$("journal").innerHTML="<tr><td class='mute'>Решений пока нет.</td></tr>";return}
+ tableSort($("journal"),rows,[["seq","№"],["at","Время (UTC)"],["user","Пользователь"],["role","Роль"],["action","Действие"],["scenario","Вариант"],["hash","plan_hash"],["reason","Обоснование"]])}
+ catch(e){$("journalState").textContent=e.message}}
+
+/* ---- risk ---- */
+function risk(){const R=D.risk,box=$("riskCard");if(!R){box.hidden=true;return}box.hidden=false;const pf=R.program_finish||{};
+ $("riskHead").innerHTML=`<div class="kpis">${[["Вариант",R.scenario_id||"—"],["Выборок",`${R.scheduled_runs} из ${R.runs}`],["Окончание программы P50",fmt(pf.p50)],["P80",fmt(pf.p80)],["P90",fmt(pf.p90)],["Все директивные сроки соблюдены",pct(R.deadlines_met_share)+" выборок"]].map(([a,b])=>`<div class="kpi"><b>${esc(b)}</b><span>${esc(a)}</span></div>`).join("")}</div>`;
+ const dr=R.drivers||[];if(!dr.length)$("riskDrivers").innerHTML=`<div class="small mute">Реестр драйверов риска пуст (лист Risks / поле risk_drivers) — учтена только неопределённость длительностей.</div>`;
+ else{const mx=Math.max(1,...dr.map(d=>d.p80_gain_wd)),W=420;$("riskDrivers").innerHTML=`<table class="small"><tr><th>Драйвер</th><th>Вероятность</th><th>Сработал в</th><th>Работ</th><th>P80 без риска</th><th style="width:${W+60}px">Выигрыш P80, р.д.</th></tr>`+dr.map(d=>`<tr><td>${esc(d.name)} <span class="mute">${esc(d.driver_id)}</span></td><td>${pct(d.probability)}</td><td>${pct(d.occurred_share)}</td><td>${d.tasks}</td><td>${fmt(d.p80_without)}</td><td><svg width="${W+60}" height="14"><rect x="0" y="2" width="${Math.max(1,Math.round(Math.max(0,d.p80_gain_wd)/mx*W))}" height="10" fill="var(--crit)"/><text x="${Math.round(Math.max(0,d.p80_gain_wd)/mx*W)+6}" y="11" style="font-size:11px">${d.p80_gain_wd}</text></svg></td></tr>`).join("")+"</table>"}
+ const ms=(R.milestone_risk||[]).filter(m=>m.target||m.hard).map(m=>({project:projName[m.project]||m.project||"",name:m.name,target:m.target,hard:m.hard?"директивный":"плановый",p50:m.p50,p80:m.p80,p90:m.p90,share:m.on_time_share}));
+ if(ms.length)tableSort($("riskMs"),ms,[["project","ОКР"],["name","Веха"],["hard","Срок"],["target","Дата срока",fmt],["p50","P50",fmt],["p80","P80",fmt],["p90","P90",fmt],["share","В срок, доля выборок",v=>`<b style="color:${v>=.8?"var(--ok)":v>=.5?"var(--warn)":"var(--crit)"}">${pct(v)}</b>`]]);
+ else $("riskMs").innerHTML="<tr><td class='mute'>У вех нет сроков.</td></tr>";
+ const ct=(R.criticality_top||[]).map(c=>({name:c.name,project:projName[c.project]||c.project,index:c.index}));
+ if(ct.length)tableSort($("riskCrit"),ct,[["project","ОКР"],["name","Работа"],["index","Доля выборок на критическом пути",pct]]);else $("riskCrit").innerHTML="<tr><td class='mute'>—</td></tr>";
+ $("riskNote").textContent=R.note||""}
+
 function months(){return [...new Set(D.axis.map(d=>d.slice(0,7)))]}
 function heat(){const s=cur();if(!s){$("heat").innerHTML="";return}const ms=months(),idx={};D.axis.forEach((d,i)=>{(idx[d.slice(0,7)]??=[]).push(i)});
  const used=ms.filter(m=>idx[m][0]<(Object.values(s.load)[0]||[]).length);
@@ -133,7 +282,7 @@ function profile(){const s=cur();if(!s){$("profile").innerHTML="";return}const r
  let ticks="";for(let i=0;i<n;i++){if(D.axis[i].slice(8)<="03"&&(i===0||D.axis[i-1].slice(5,7)!==D.axis[i].slice(5,7))){ticks+=`<text x="${i*2+2}" y="${H-6}" style="font-size:10px">${D.axis[i].slice(5,7)}.${D.axis[i].slice(2,4)}</text>`}}
  const res=D.resources.find(r=>r.id===rid);$("profile").innerHTML=`<div class="small"><b>${esc(res.code)}</b> — ${esc(res.name)} · ёмкость ${res.capacity} ед. · ось — рабочие дни; синие — загрузка, красные — перегрузка, линия — доступно</div><div style="overflow:auto"><svg width="${W}" height="${H}">${bars}<path d="${cap}" fill="none" stroke="#1d2330" stroke-width="1"/>${ticks}</svg></div>`}
 function tableSort(tb,rows,cols){let key=null,dir=1;function draw(){const rs=key==null?rows:[...rows].sort((a,b)=>{const x=a[key],y=b[key];return (x>y?1:x<y?-1:0)*dir});
- tb.innerHTML="<tr>"+cols.map(([k,l])=>`<th data-k="${k}">${l}${k===key?(dir>0?" ▲":" ▼"):""}</th>`).join("")+"</tr>"+rs.map(r=>"<tr>"+cols.map(([k,,f])=>`<td>${f?f(r[k],r):esc(r[k]??"—")}</td>`).join("")+"</tr>").join("");
+ tb.innerHTML="<tr>"+cols.map(([k,l])=>`<th data-k="${k}" scope="col">${l}${k===key?(dir>0?" ▲":" ▼"):""}</th>`).join("")+"</tr>"+rs.map(r=>"<tr>"+cols.map(([k,,f])=>`<td>${f?f(r[k],r):esc(r[k]??"—")}</td>`).join("")+"</tr>").join("");
  tb.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;dir=key===k?-dir:1;key=k;draw()})}draw()}
 function why(){const s=cur();if(!s){$("why").innerHTML="";return}const rows=s.tasks.filter(t=>t.why).map(t=>({name:t.name,project:projName[t.project],shift:t.shift,code:t.why.cause_code,text:t.why.text,cf:t.why.counterfactual?t.why.counterfactual.text:""}));
  if(!rows.length){$("why").innerHTML="<tr><td class='mute'>Объяснения не рассчитаны или сдвигов нет.</td></tr>";return}
@@ -144,7 +293,10 @@ function conf(){const rows=D.conflicts.concat(D.quality.map(q=>({kind:"КАЧЕ�
 function viol(){const s=cur();const rows=s?s.violations:[];if(!rows.length){$("viol").innerHTML="<tr><td class='mute'>Нет.</td></tr>";return}
  tableSort($("viol"),rows,[["severity","Тип"],["code","Код"],["message","Описание"]])}
 function evidence(){const s=cur();$("evidence").textContent=JSON.stringify(s?s.evidence:D.scenarios.map(x=>({id:x.id,claim:x.claim,detail:x.detail})),null,2)}
-function all(){kpis();gantt();heat();profile();why();viol();evidence()}
-["scenario"].forEach(id=>$(id).addEventListener("change",all));["zoom","proj","onlyCrit","onlyMoved","showBase","showEdges"].forEach(id=>$(id).addEventListener("change",gantt));
-$("q").addEventListener("input",gantt);addEventListener("resize",()=>{if($("zoom").value==="fit")gantt()});$("res").addEventListener("change",profile);conf();all();
+function all(){selected=null;kpis();gantt();heat();profile();why();viol();evidence();editChanged()}
+$("scenario").addEventListener("change",all);["zoom","proj","onlyCrit","onlyMoved","showBase","showEdges"].forEach(id=>$(id).addEventListener("change",gantt));
+$("q").addEventListener("input",gantt);addEventListener("resize",()=>{if($("zoom").value==="fit")gantt()});$("res").addEventListener("change",profile);
+if(D.workbench&&D.workbench.remote&&!D.program){$("banner").innerHTML="<div class='small mute'>Загрузка данных рабочего места…</div>";
+ api("/api/data").then(d=>boot(d)).catch(e=>{$("banner").innerHTML=`<div class="errbox">${esc(e.message)}</div>`})}
+else boot(D);
 </script></body></html>

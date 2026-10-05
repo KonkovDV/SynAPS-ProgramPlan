@@ -1,7 +1,7 @@
 """Excel workbook for one consolidated program (plan section T1.3).
 
 Sheets: Program, Projects, WBS, Tasks, Demands, Dependencies, Resources, Skills,
-Exceptions. Dates are ISO ``YYYY-MM-DD``. Several skills in one cell are
+Exceptions, Risks (optional). Dates are ISO ``YYYY-MM-DD``. Several skills in one cell are
 separated by ``;``. An empty id cell or a row whose first cell starts with
 ``#`` is skipped, so the template can carry a comment row.
 """
@@ -30,6 +30,7 @@ from synaps_programplan.model import (
     ProvenanceKind,
     Resource,
     ResourceKind,
+    RiskDriver,
     Skill,
     Task,
     TaskKind,
@@ -68,6 +69,7 @@ _SHEETS: dict[str, list[str]] = {
     "Resources": ["id", "kind", "code", "name", "capacity_units", "skills", "org_unit"],
     "Skills": ["id", "code", "name"],
     "Exceptions": ["resource_id", "start", "end", "units_available", "reason"],
+    "Risks": ["id", "name", "probability", "low", "mode", "high", "task_ids", "owner"],
 }
 
 
@@ -215,6 +217,19 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
             )
             for row in tables["Exceptions"]
         ],
+        risk_drivers=[
+            RiskDriver(
+                id=_text(row, "id"),
+                name=_text(row, "name"),
+                probability=_float(row, "probability"),
+                low=_float(row, "low", default=1.0),
+                mode=_float(row, "mode", default=1.2),
+                high=_float(row, "high", default=1.5),
+                task_ids=[part.strip() for part in _text(row, "task_ids").split(";") if part.strip()],
+                owner=_opt(row, "owner") or "",
+            )
+            for row in tables["Risks"]
+        ],
         provenance=provenance or Provenance(kind=ProvenanceKind.EXPERIMENT, source=path.name),
     )
 
@@ -316,6 +331,19 @@ def _rows(program: OKRProgram) -> dict[str, list[dict[str, Any]]]:
             }
             for e in program.capacity_exceptions
         ],
+        "Risks": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "probability": r.probability,
+                "low": r.low,
+                "mode": r.mode,
+                "high": r.high,
+                "task_ids": ";".join(r.task_ids),
+                "owner": r.owner,
+            }
+            for r in program.risk_drivers
+        ],
     }
 
 
@@ -368,6 +396,15 @@ def _optional_int(row: dict[str, Any], key: str) -> int | None:
 def _int(row: dict[str, Any], key: str, default: int = 0) -> int:
     value = _optional_int(row, key)
     return default if value is None else value
+
+
+def _float(row: dict[str, Any], key: str, default: float | None = None) -> float:
+    value = _raw(row, key)
+    if value is None:
+        if default is None:
+            raise ValueError(f"column {key} is empty")
+        return default
+    return float(str(value).replace(",", "."))
 
 
 def _bool(row: dict[str, Any], key: str, default: bool = False) -> bool:
