@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1d2330;--mute:#6b7280;--line:#e3e6eb;--crit:#d23f31;--ok:#1f8a4c;--warn:#c27c0e;--base:#c9ced6}
+*{box-sizing:border-box}body{margin:0;font:13px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+header{padding:14px 20px;background:#1d2330;color:#fff}header h1{margin:0;font-size:18px;font-weight:600}
+header .sub{color:#b8c0cc;font-size:12px;margin-top:4px}
+main{padding:14px 20px;display:grid;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.card h2{margin:0 0 10px;font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:6px;padding:8px 10px}.kpi b{display:block;font-size:18px}
+.kpi span{color:var(--mute);font-size:11px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+select,button,input{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:4px;background:#fff}
+button.active{background:#1d2330;color:#fff}
+table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+th{background:#fafbfc;font-weight:600;cursor:pointer;position:sticky;top:0}
+.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:600;color:#fff}
+.OPTIMAL,.FEASIBLE{background:var(--ok)}.HEURISTIC_FEASIBLE{background:#3b7dd8}.INFEASIBLE,.REJECTED,.ERROR{background:var(--crit)}
+.warnbox{border-left:4px solid var(--warn);background:#fff8eb;padding:6px 10px;margin:6px 0}
+#gantt{overflow:auto;max-height:70vh;border:1px solid var(--line);position:relative}
+#gantt svg text{font-size:11px;fill:var(--ink)}
+.tip{position:fixed;pointer-events:none;background:#1d2330;color:#fff;padding:8px 10px;border-radius:6px;max-width:420px;font-size:12px;display:none;z-index:9}
+.heat td{padding:0;width:18px;height:16px;border:1px solid #fff}.heat th{font-size:10px;padding:2px}
+.scroll{overflow:auto;max-height:420px}.mute{color:var(--mute)}.small{font-size:11px}
+.legend span{display:inline-flex;align-items:center;gap:4px;margin-right:12px}.sw{width:14px;height:8px;display:inline-block;border-radius:2px}
+</style></head><body>
+<header><h1>__TITLE__</h1><div class="sub" id="sub"></div></header>
+<main>
+<section class="card" id="banner"></section>
+<section class="card"><h2>Сравнение вариантов плана</h2><div class="scroll"><table id="cmp"></table></div></section>
+<section class="card"><h2>Показатели варианта</h2>
+<div class="bar"><label>Вариант <select id="scenario"></select></label><span id="verdict"></span></div>
+<div class="kpis" id="kpis"></div></section>
+<section class="card"><h2>Диаграмма Ганта</h2>
+<div class="bar">
+<label>Масштаб <select id="zoom"><option value="fit" selected>вся программа</option><option value="4">недели</option><option value="1.5">месяцы</option><option value="0.5">кварталы</option></select></label>
+<label>ОКР <select id="proj"><option value="">все</option></select></label>
+<label><input type="checkbox" id="onlyCrit"> только критические</label>
+<label><input type="checkbox" id="onlyMoved"> только сдвинутые</label>
+<label><input type="checkbox" id="showBase" checked> исходный план</label>
+<label><input type="checkbox" id="showEdges"> связи</label>
+<label>Поиск <input id="q" size="16"></label></div>
+<div class="legend small"><span><i class="sw" style="background:#4c78a8"></i>работа</span><span><i class="sw" style="background:var(--crit)"></i>критическая</span><span><i class="sw" style="background:var(--base)"></i>исходный план</span><span>◆ веха</span><span style="color:var(--crit)">▼ директивный срок</span><span style="color:var(--warn)">▽ плановый срок</span></div>
+<div id="gantt"></div></section>
+<section class="card"><h2>Загрузка ресурсов</h2>
+<div class="bar"><label>Ресурс <select id="res"></select></label><span class="mute small">Тепловая карта: пиковая загрузка за месяц, % от доступного; клик по строке — дневной профиль</span></div>
+<div id="profile"></div><div class="scroll"><table class="heat" id="heat"></table></div></section>
+<section class="card"><h2>Почему работы перенесены</h2><div class="scroll"><table id="why"></table></div></section>
+<section class="card"><h2>Конфликты исходных планов (до оптимизации)</h2><div class="scroll"><table id="conf"></table></div></section>
+<section class="card"><h2>Нарушения и предупреждения варианта</h2><div class="scroll"><table id="viol"></table></div></section>
+<section class="card"><h2>Доказательная база</h2><pre id="evidence" class="small" style="white-space:pre-wrap"></pre></section>
+</main><div class="tip" id="tip"></div>
+<script type="application/json" id="data">__DATA__</script>
+<script>
+"use strict";
+const D=JSON.parse(document.getElementById("data").textContent);
+const $=id=>document.getElementById(id), esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const DAY=864e5, toD=s=>new Date(s+"T00:00:00Z"), fmt=s=>s?s.slice(8,10)+"."+s.slice(5,7)+"."+s.slice(0,4):"—";
+const PCOL=["#4c78a8","#59a14f","#9c755f","#b07aa1","#f28e2b","#76b7b2","#edc948","#ff9da7","#86bcb6","#8cd17d"];
+const projColor={};D.projects.forEach((p,i)=>projColor[p.id]=PCOL[i%PCOL.length]);
+const projName=Object.fromEntries(D.projects.map(p=>[p.id,p.code]));
+const resName=Object.fromEntries(D.resources.map(r=>[r.id,r.code]));
+$("sub").textContent=`Дата статуса ${fmt(D.program.status_date)} · данные: ${D.program.provenance} · OKRPlan ${D.versions.okrplan} · SynAPS ${String(D.versions.synaps).slice(0,12)} · TRL ${D.versions.trl} (${D.versions.claim_level})`;
+(function banner(){let h="";
+ if(D.provisional_years.length)h+=`<div class="warnbox">Производственный календарь на ${D.provisional_years.join(", ")} не утверждён постановлением Правительства РФ — использовано правило ст. 112 ТК РФ (предварительно).</div>`;
+ if(D.program.provenance!=="customer_anonymized")h+=`<div class="warnbox">Данные программы: ${esc(D.program.provenance)}. Результаты не являются результатами на данных заказчика.</div>`;
+ if(D.witness&&D.witness.infeasible)h+=`<div class="warnbox"><b>Программа невыполнима при текущих требованиях.</b> ${esc(D.witness.text)}<ul>${(D.witness.witness||[]).map(w=>`<li>${esc(w.text)}${w.suggestion?" → "+esc(w.suggestion):""}</li>`).join("")}</ul>${D.witness.minimal?"":"<span class='mute'>(набор может быть не минимальным: часть проверок не завершилась за лимит времени)</span>"}</div>`;
+ h+=`<div class="small mute">План публикуется только если решатель вернул допустимое решение, проверка ядра SynAPS чиста и независимая доменная проверка не нашла жёстких нарушений.</div>`;
+ $("banner").innerHTML=h})();
+(function cmp(){const rows=D.comparison;const cols=[["label","Вариант"],["claim","Вердикт"],["program_finish","Окончание программы"],["late_milestones","Просрочено вех"],["tardiness_wd","Просрочка, р.д."],["moved_tasks","Сдвинуто работ"],["shift_sum_wd","Σ сдвигов, р.д."],["shift_max_wd","Макс. сдвиг"],["peak_load_pct","Пик загрузки, %"]];
+ const best={};["late_milestones","tardiness_wd","moved_tasks","shift_sum_wd","peak_load_pct"].forEach(k=>{const v=rows.filter(r=>r.ok&&r[k]!=null).map(r=>r[k]);if(v.length)best[k]=Math.min(...v)});
+ $("cmp").innerHTML="<tr>"+cols.map(c=>`<th>${c[1]}</th>`).join("")+"</tr>"+rows.map(r=>"<tr>"+cols.map(([k])=>{let v=r[k];
+  if(k==="claim")v=`<span class="badge ${v}">${v}</span>`+(r.duplicate_of?` <span class="mute small">= ${esc(r.duplicate_of)}</span>`:"");
+  else if(k==="program_finish")v=fmt(v);else v=v==null?"—":esc(v);
+  const b=best[k]!=null&&r[k]===best[k]&&r.ok?" style='font-weight:700;color:var(--ok)'":"";return `<td${b}>${v}</td>`}).join("")+"</tr>").join("")})();
+const okScen=D.scenarios.filter(s=>s.ok);
+$("scenario").innerHTML=D.scenarios.map(s=>`<option value="${esc(s.id)}" ${s.ok?"":"disabled"}>${esc(s.label)}${s.ok?"":" — "+s.claim}</option>`).join("");
+if(okScen.length)$("scenario").value=okScen[0].id;
+D.projects.forEach(p=>$("proj").insertAdjacentHTML("beforeend",`<option value="${esc(p.id)}">${esc(p.code)} — ${esc(p.name)}</option>`));
+D.resources.forEach(r=>$("res").insertAdjacentHTML("beforeend",`<option value="${esc(r.id)}">${esc(r.code)} — ${esc(r.name)}</option>`));
+const cur=()=>D.scenarios.find(s=>s.id===$("scenario").value);
+function kpis(){const s=cur();if(!s){$("kpis").innerHTML="<div class='mute'>Нет принятого плана: все варианты отклонены или невыполнимы.</div>";return}
+ const k=s.kpi||{};$("verdict").innerHTML=`<span class="badge ${s.claim}">${s.claim}</span> <span class="small mute">${esc(s.detail||"")}</span>`;
+ const peak=Math.max(0,...(k.resources||[]).map(r=>r.peak_pct));const items=[["Окончание программы",fmt(k.program_finish)],["Просрочено вех/сроков",k.late_count],["Суммарная просрочка, р.д.",k.tardiness_wd],["Сдвинуто работ",k.moved_count],["Σ сдвигов, р.д.",k.shift_sum_wd],["Пик загрузки ресурса, %",peak.toFixed(0)]];
+ Object.entries(k.project_finish||{}).forEach(([p,d])=>items.push(["Окончание "+(projName[p]||p),fmt(d)]));
+ $("kpis").innerHTML=items.map(([a,b])=>`<div class="kpi"><b>${esc(b)}</b><span>${esc(a)}</span></div>`).join("")}
+const tip=$("tip");function showTip(e,h){tip.innerHTML=h;tip.style.display="block";const x=Math.min(e.clientX+14,innerWidth-440);tip.style.left=x+"px";tip.style.top=(e.clientY+14)+"px"}function hideTip(){tip.style.display="none"}
+function taskTip(t){let h=`<b>${esc(t.name)}</b><br>${esc(projName[t.project]||t.project)} · ${t.milestone?"веха "+fmt(t.finish):fmt(t.start)+" — "+fmt(t.finish)+" ("+t.duration+" р.д.)"}`;
+ if(t.ref_start)h+=`<br>Исходный план: ${fmt(t.ref_start)} — ${fmt(t.ref_finish)}`;if(t.shift)h+=`<br>Сдвиг: ${t.shift>0?"+":""}${t.shift} р.д.`;
+ if(t.float!=null)h+=`<br>Резерв: ${t.float} р.д.${t.critical?" · <b>критическая</b>":""}`;if(t.deadline)h+=`<br>Директивный срок: ${fmt(t.deadline)}`;else if(t.due)h+=`<br>Плановый срок: ${fmt(t.due)}`;
+ const res=t.demands.filter(d=>d.resource).map(d=>resName[d.resource]+(d.skill?" ("+d.skill+")":"")).join(", ");if(res)h+=`<br>Ресурсы: ${esc(res)}`;
+ if(t.why)h+=`<hr style="border-color:#475063">${esc(t.why.text)}`+(t.why.counterfactual&&t.why.counterfactual.text?`<br><i>${esc(t.why.counterfactual.text)}</i>`:"");return h}
+function gantt(){const s=cur(),box=$("gantt");if(!s){box.innerHTML="";return}
+ const proj=$("proj").value,oc=$("onlyCrit").checked,om=$("onlyMoved").checked,base=$("showBase").checked,q=$("q").value.toLowerCase();
+ let tasks=s.tasks.filter(t=>(!proj||t.project===proj)&&(!oc||t.critical)&&(!om||t.shift)&&(!q||t.name.toLowerCase().includes(q)||t.id.toLowerCase().includes(q)));
+ const all=s.tasks.flatMap(t=>[t.start,t.finish,t.ref_start,t.ref_finish,t.deadline].filter(Boolean)).map(toD);
+ const t0=new Date(Math.min(...all,toD(D.program.status_date))-14*DAY),t1=new Date(Math.max(...all)+30*DAY);
+ const LW=300,RH=20,HH=34,z=$("zoom").value,pxd=z==="fit"?Math.max(0.2,(box.clientWidth-LW-24)/((t1-t0)/DAY)):+z;
+ const X=d=>Math.round((toD(d)-t0)/DAY*pxd),mstep=Math.max(1,Math.ceil(42/(30.4*pxd)));
+ const rows=[];D.projects.forEach(p=>{const ts=tasks.filter(t=>t.project===p.id);if(!ts.length)return;rows.push({hdr:p,ts});ts.sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0).forEach(t=>rows.push({t}))});
+ const W=LW+Math.round((t1-t0)/DAY*pxd),H=HH+rows.length*RH+10;const pos={};let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+ for(let d=new Date(Date.UTC(t0.getUTCFullYear(),t0.getUTCMonth(),1));d<t1;d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1))){const x=LW+Math.round((d-t0)/DAY*pxd);if(x<LW)continue;
+  svg+=`<line x1="${x}" y1="${HH-14}" x2="${x}" y2="${H}" stroke="#eef0f3"/>`;const m=d.getUTCMonth();if((d.getUTCFullYear()*12+m)%mstep===0)svg+=`<text x="${x+3}" y="${HH-18}">${String(m+1).padStart(2,"0")}.${String(d.getUTCFullYear()).slice(2)}</text>`}
+ const sx=LW+X(D.program.status_date);svg+=`<line x1="${sx}" y1="${HH-14}" x2="${sx}" y2="${H}" stroke="#3b7dd8" stroke-dasharray="4 3"/><text x="${sx+3}" y="${HH-4}" style="fill:#3b7dd8">статус</text>`;
+ rows.forEach((r,i)=>{const y=HH+i*RH;if(r.hdr){svg+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#f2f4f7"/><text x="6" y="${y+14}" style="font-weight:700">${esc(r.hdr.code)} — ${esc(r.hdr.name)}</text>`;
+   if(r.hdr.deadline){const x=LW+X(r.hdr.deadline);svg+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${H}" stroke="var(--crit)" stroke-width="1" stroke-dasharray="2 3" opacity=".6"/>`}return}
+  const t=r.t,c=t.critical?"var(--crit)":projColor[t.project],lbl=t.name.length>44?t.name.slice(0,43)+"…":t.name;
+  svg+=`<text x="14" y="${y+14}" data-id="${esc(t.id)}">${esc(lbl)}</text>`;
+  if(base&&t.ref_start){const a=LW+X(t.ref_start),b=LW+X(t.ref_finish)+(t.milestone?0:pxd);svg+=t.milestone?`<path d="M${a} ${y+14}l4 4-4 4-4-4z" fill="var(--base)"/>`:`<rect x="${a}" y="${y+13}" width="${Math.max(2,b-a)}" height="4" fill="var(--base)"/>`}
+  const a=LW+X(t.start),b=LW+X(t.finish)+(t.milestone?0:pxd);pos[t.id]={a,b,y:y+8};
+  if(t.milestone)svg+=`<path d="M${a} ${y+2}l6 7-6 7-6-7z" fill="${c}" data-id="${esc(t.id)}"/>`;
+  else svg+=`<rect x="${a}" y="${y+3}" width="${Math.max(2,b-a)}" height="10" rx="2" fill="${c}" opacity="${t.status==="DONE"?.45:.9}" data-id="${esc(t.id)}"/>`;
+  if(t.deadline){const x=LW+X(t.deadline);svg+=`<path d="M${x-4} ${y}h8l-4 6z" fill="var(--crit)"/>`}else if(t.due){const x=LW+X(t.due);svg+=`<path d="M${x-4} ${y}h8l-4 6z" fill="none" stroke="var(--warn)"/>`}});
+ if($("showEdges").checked)D.edges.forEach(e=>{const p=pos[e.src],q2=pos[e.dst];if(!p||!q2)return;const x1=e.type[0]==="F"?p.b:p.a,x2=e.type[1]==="F"?q2.b:q2.a;
+  svg+=`<path d="M${x1} ${p.y}h4V${q2.y}H${x2}" fill="none" stroke="#9aa3b2" stroke-width="1" marker-end=""/>`});
+ svg+=`<line x1="${LW-1}" y1="0" x2="${LW-1}" y2="${H}" stroke="var(--line)"/></svg>`;box.innerHTML=svg;
+ const byId=Object.fromEntries(s.tasks.map(t=>[t.id,t]));box.querySelectorAll("[data-id]").forEach(el=>{el.addEventListener("mousemove",e=>showTip(e,taskTip(byId[el.dataset.id])));el.addEventListener("mouseleave",hideTip)})}
+function months(){return [...new Set(D.axis.map(d=>d.slice(0,7)))]}
+function heat(){const s=cur();if(!s){$("heat").innerHTML="";return}const ms=months(),idx={};D.axis.forEach((d,i)=>{(idx[d.slice(0,7)]??=[]).push(i)});
+ const used=ms.filter(m=>idx[m][0]<(Object.values(s.load)[0]||[]).length);
+ let h="<tr><th>Ресурс</th>"+used.map(m=>`<th>${m.slice(5)}.${m.slice(2,4)}</th>`).join("")+"</tr>";
+ D.resources.forEach(r=>{const L=s.load[r.id]||[],A=D.availability[r.id]||[];h+=`<tr data-r="${esc(r.id)}" style="cursor:pointer"><th style="text-align:left;white-space:nowrap">${esc(r.code)}</th>`;
+  used.forEach(m=>{let pk=0,over=false;idx[m].forEach(i=>{if(i>=L.length)return;const a=A[i]||0,u=L[i]||0;if(a>0)pk=Math.max(pk,u/a);if(u>a)over=true});
+   const col=over?"#7f1d1d":pk===0?"#f3f4f6":pk<=.5?"#cfe8d6":pk<=.85?"#8fd1a5":pk<=1?"#f2c14e":"#d23f31";h+=`<td title="${esc(r.code)} ${m}: пик ${(pk*100).toFixed(0)}%" style="background:${col}"></td>`});h+="</tr>"});
+ $("heat").innerHTML=h;$("heat").querySelectorAll("tr[data-r]").forEach(tr=>tr.addEventListener("click",()=>{$("res").value=tr.dataset.r;profile()}))}
+function profile(){const s=cur();if(!s){$("profile").innerHTML="";return}const rid=$("res").value,L=s.load[rid]||[],A=D.availability[rid]||[],n=L.length;if(!n){$("profile").innerHTML="";return}
+ const W=Math.max(600,n*2),H=140,mx=Math.max(1,...L,...A.slice(0,n)),Y=v=>H-20-(v/mx)*(H-30);let bars="",cap="M0 "+Y(A[0]||0);
+ for(let i=0;i<n;i++){const u=L[i]||0,a=A[i]||0;if(u)bars+=`<rect x="${i*2}" y="${Y(u)}" width="2" height="${H-20-Y(u)}" fill="${u>a?"#d23f31":"#4c78a8"}"/>`;cap+=`L${i*2} ${Y(a)}L${i*2+2} ${Y(a)}`}
+ let ticks="";for(let i=0;i<n;i++){if(D.axis[i].slice(8)<="03"&&(i===0||D.axis[i-1].slice(5,7)!==D.axis[i].slice(5,7))){ticks+=`<text x="${i*2+2}" y="${H-6}" style="font-size:10px">${D.axis[i].slice(5,7)}.${D.axis[i].slice(2,4)}</text>`}}
+ const res=D.resources.find(r=>r.id===rid);$("profile").innerHTML=`<div class="small"><b>${esc(res.code)}</b> — ${esc(res.name)} · ёмкость ${res.capacity} ед. · ось — рабочие дни; синие — загрузка, красные — перегрузка, линия — доступно</div><div style="overflow:auto"><svg width="${W}" height="${H}">${bars}<path d="${cap}" fill="none" stroke="#1d2330" stroke-width="1"/>${ticks}</svg></div>`}
+function tableSort(tb,rows,cols){let key=null,dir=1;function draw(){const rs=key==null?rows:[...rows].sort((a,b)=>{const x=a[key],y=b[key];return (x>y?1:x<y?-1:0)*dir});
+ tb.innerHTML="<tr>"+cols.map(([k,l])=>`<th data-k="${k}">${l}${k===key?(dir>0?" ▲":" ▼"):""}</th>`).join("")+"</tr>"+rs.map(r=>"<tr>"+cols.map(([k,,f])=>`<td>${f?f(r[k],r):esc(r[k]??"—")}</td>`).join("")+"</tr>").join("");
+ tb.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;dir=key===k?-dir:1;key=k;draw()})}draw()}
+function why(){const s=cur();if(!s){$("why").innerHTML="";return}const rows=s.tasks.filter(t=>t.why).map(t=>({name:t.name,project:projName[t.project],shift:t.shift,code:t.why.cause_code,text:t.why.text,cf:t.why.counterfactual?t.why.counterfactual.text:""}));
+ if(!rows.length){$("why").innerHTML="<tr><td class='mute'>Объяснения не рассчитаны или сдвигов нет.</td></tr>";return}
+ tableSort($("why"),rows,[["project","ОКР"],["name","Работа"],["shift","Сдвиг, р.д."],["code","Причина"],["text","Объяснение"],["cf","Если оставить на месте"]])}
+function conf(){const rows=D.conflicts.concat(D.quality.map(q=>({kind:"КАЧЕСТВО: "+q.code,message:q.message,severity:q.severity,projects:[],start:null,end:null})));
+ if(!rows.length){$("conf").innerHTML="<tr><td class='mute'>Анализ исходных планов не выполнялся или конфликтов нет.</td></tr>";return}
+ tableSort($("conf"),rows,[["kind","Тип"],["severity","Важность"],["message","Описание"],["projects","ОКР",v=>esc((v||[]).map(p=>projName[p]||p).join(", "))],["start","С",fmt],["end","По",fmt]])}
+function viol(){const s=cur();const rows=s?s.violations:[];if(!rows.length){$("viol").innerHTML="<tr><td class='mute'>Нет.</td></tr>";return}
+ tableSort($("viol"),rows,[["severity","Тип"],["code","Код"],["message","Описание"]])}
+function evidence(){const s=cur();$("evidence").textContent=JSON.stringify(s?s.evidence:D.scenarios.map(x=>({id:x.id,claim:x.claim,detail:x.detail})),null,2)}
+function all(){kpis();gantt();heat();profile();why();viol();evidence()}
+["scenario"].forEach(id=>$(id).addEventListener("change",all));["zoom","proj","onlyCrit","onlyMoved","showBase","showEdges"].forEach(id=>$(id).addEventListener("change",gantt));
+$("q").addEventListener("input",gantt);addEventListener("resize",()=>{if($("zoom").value==="fit")gantt()});$("res").addEventListener("change",profile);conf();all();
+</script></body></html>
