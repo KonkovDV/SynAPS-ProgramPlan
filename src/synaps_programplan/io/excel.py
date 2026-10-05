@@ -119,7 +119,7 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
     tasks = []
     for row in tables["Tasks"]:
         duration = _int(row, "duration_wd")
-        kind = TaskKind(_text(row, "kind") or ("MILESTONE" if duration == 0 else "WORK"))
+        kind = TaskKind(_opt(row, "kind") or ("MILESTONE" if duration == 0 else "WORK"))
         tasks.append(
             Task(
                 id=_text(row, "id"),
@@ -135,7 +135,7 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
                 deadline=_date(row, "deadline"),
                 shift_limit_wd=_optional_int(row, "shift_limit_wd"),
                 pinned=_bool(row, "pinned"),
-                status=TaskStatus(_text(row, "status") or "PLANNED"),
+                status=TaskStatus(_opt(row, "status") or "PLANNED"),
                 remaining_wd=_optional_int(row, "remaining_wd"),
                 actual_start=_date(row, "actual_start"),
                 actual_finish=_date(row, "actual_finish"),
@@ -157,7 +157,7 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
         projects=[
             Project(
                 id=_text(row, "id"),
-                code=_text(row, "code") or _text(row, "id"),
+                code=_opt(row, "code") or _text(row, "id"),
                 name=_text(row, "name"),
                 priority=_int(row, "priority", default=500),
                 due_date=_date(row, "due_date"),
@@ -170,9 +170,9 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
                 id=_text(row, "id"),
                 project_id=_text(row, "project_id"),
                 parent_id=_opt(row, "parent_id"),
-                code=_text(row, "code") or _text(row, "id"),
+                code=_opt(row, "code") or _text(row, "id"),
                 name=_text(row, "name"),
-                kind=WBSKind(_text(row, "kind") or "PACKAGE"),
+                kind=WBSKind(_opt(row, "kind") or "PACKAGE"),
             )
             for row in tables["WBS"]
         ],
@@ -181,11 +181,11 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
             Dependency(
                 src_task_id=_text(row, "src_task_id"),
                 dst_task_id=_text(row, "dst_task_id"),
-                type=DependencyType(_text(row, "type") or "FS"),
+                type=DependencyType(_opt(row, "type") or "FS"),
                 lag_wd=_int(row, "lag_wd", default=0),
                 max_lag_wd=_optional_int(row, "max_lag_wd"),
                 hard=_bool(row, "hard", default=True),
-                source=DependencySource(_text(row, "source") or "IMPORTED"),
+                source=DependencySource(_opt(row, "source") or "IMPORTED"),
             )
             for row in tables["Dependencies"]
         ],
@@ -193,7 +193,7 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
             Resource(
                 id=_text(row, "id"),
                 kind=ResourceKind(_text(row, "kind")),
-                code=_text(row, "code") or _text(row, "id"),
+                code=_opt(row, "code") or _text(row, "id"),
                 name=_text(row, "name"),
                 capacity_units=_int(row, "capacity_units", default=1),
                 skills=[part for part in (_opt(row, "skills") or "").split(";") if part],
@@ -202,7 +202,7 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
             for row in tables["Resources"]
         ],
         skills=[
-            Skill(id=_text(row, "id"), code=_text(row, "code") or _text(row, "id"), name=_text(row, "name"))
+            Skill(id=_text(row, "id"), code=_opt(row, "code") or _text(row, "id"), name=_text(row, "name"))
             for row in tables["Skills"]
         ],
         capacity_exceptions=[
@@ -211,7 +211,7 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
                 start=_date(row, "start") or date.today(),
                 end=_date(row, "end") or date.today(),
                 units_available=_int(row, "units_available", default=0),
-                reason=ExceptionReason(_text(row, "reason") or "OTHER"),
+                reason=ExceptionReason(_opt(row, "reason") or "OTHER"),
             )
             for row in tables["Exceptions"]
         ],

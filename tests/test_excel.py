@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from openpyxl import load_workbook
+
 from synaps_programplan.io.excel import read_excel, write_excel, write_template
+from synaps_programplan.model import DependencyType, TaskKind, TaskStatus
 from tests.conftest import dep, needs, person, program, stand, task, uses
 
 
@@ -28,6 +31,26 @@ def test_excel_roundtrip(tmp_path: Path) -> None:
     assert loaded.dependencies[0].lag_wd == 1
     assert {r.id for r in loaded.resources} == {"st", "ivanov"}
     assert loaded.resources[1].skills == ["design"]
+
+
+def test_optional_columns_may_stay_empty(tmp_path: Path) -> None:
+    path = tmp_path / "manual.xlsx"
+    write_template(path)
+    book = load_workbook(path)
+    book["Program"].append(["prog", "Программа", "2027-01-11", "2027-12-30", None])
+    book["Projects"].append(["p1", None, "ОКР-1"])
+    book["Tasks"].append(["a", "p1", None, "Расчёт", 5])
+    book["Tasks"].append(["m", "p1", None, "Веха", 0])
+    book["Dependencies"].append(["a", "m"])
+    book["Resources"].append(["st", "STAND", None, "Стенд", 1])
+    book["Demands"].append(["a", "st", None, None])
+    book.save(path)
+    loaded = read_excel(path)
+    assert loaded.projects[0].code == "p1"
+    assert [t.kind for t in loaded.tasks] == [TaskKind.WORK, TaskKind.MILESTONE]
+    assert loaded.tasks[0].status is TaskStatus.PLANNED
+    assert loaded.dependencies[0].type is DependencyType.FS
+    assert loaded.tasks[0].demands[0].units == 1
 
 
 def test_template_has_no_data_rows(tmp_path: Path) -> None:

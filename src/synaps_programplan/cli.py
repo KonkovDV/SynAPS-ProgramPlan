@@ -23,7 +23,7 @@ from synaps_programplan.evidence import fingerprint
 from synaps_programplan.explanations import attach_counterfactuals, explain, infeasibility_witness
 from synaps_programplan.io import file_sha256, load_plan, load_program, save_plan, save_program
 from synaps_programplan.io.excel import read_excel, write_template
-from synaps_programplan.io.mspdi import ImportReport, read_mspdi
+from synaps_programplan.io.mspdi import ImportReport, read_mspdi, write_plan_mspdi
 from synaps_programplan.merge import merge_projects, read_links_csv
 from synaps_programplan.model import Provenance, ProvenanceKind
 from synaps_programplan.montecarlo import simulate
@@ -53,7 +53,7 @@ def _solve_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--solver", choices=["cpsat", "greedy"], default="cpsat")
     parser.add_argument("--time-limit", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--objective", choices=["finish", "due"], default="finish")
+    parser.add_argument("--objective", choices=["finish", "due", "stability"], default="finish")
     parser.add_argument("--edge-mode", choices=["native", "windows"], default="native")
 
 
@@ -243,6 +243,17 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    program = load_program(args.program)
+    result = load_plan(args.plan)
+    if not result.outcome.ok:
+        _print({"error": "plan is not accepted (outcome.ok = false); nothing to export"})
+        return 1
+    write_plan_mspdi(program, result, args.out)
+    _print({"out": str(args.out), "tasks": len(result.tasks), "plan_hash": result.evidence.get("plan_hash")})
+    return 0
+
+
 def cmd_repair(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     previous = load_plan(args.plan)
@@ -415,6 +426,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--witness", type=Path)
     p.add_argument("--out", type=Path, required=True)
     p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser("export", help="принятый план в MS Project XML (MSPDI)")
+    p.add_argument("program", type=Path)
+    p.add_argument("plan", type=Path)
+    p.add_argument("--out", type=Path, required=True)
+    p.set_defaults(func=cmd_export)
 
     p = sub.add_parser("repair", help="перепланирование на новую дату статуса")
     p.add_argument("program", type=Path)

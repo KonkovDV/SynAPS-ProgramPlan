@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import ast
 import random
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 from synaps.model import ScheduleResult, SolverStatus
 from synaps.validation import verify_schedule_result
 
+import synaps_programplan.checker as checker_module
 from synaps_programplan.checker import check_plan
 from synaps_programplan.compiler import compile_program
 from synaps_programplan.model import OKRProgram, TaskStatus
@@ -145,3 +148,13 @@ def test_missing_and_unknown_tasks() -> None:
     assert "MISSING_TASK" in _hard_codes(prog, result.tasks[1:])
     ghost = result.tasks[0].model_copy(update={"task_id": "ghost"})
     assert "UNKNOWN_TASK" in _hard_codes(prog, [*result.tasks, ghost])
+
+
+def test_checker_stays_independent_of_the_solver_path() -> None:
+    tree = ast.parse(Path(checker_module.__file__).read_text(encoding="utf-8"))
+    nodes = list(ast.walk(tree))
+    imported = {node.module or "" for node in nodes if isinstance(node, ast.ImportFrom)}
+    imported |= {alias.name for node in nodes if isinstance(node, ast.Import) for alias in node.names}
+    solver_path = {"synaps_programplan.compiler", "synaps_programplan.planner", "synaps_programplan.binding"}
+    leaks = {name for name in imported if name.split(".")[0] in {"synaps", "ortools"} or name in solver_path}
+    assert not leaks
