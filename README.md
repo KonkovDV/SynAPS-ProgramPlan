@@ -9,7 +9,8 @@
 ```text
 SynAPS-ProgramPlan demo --out-dir out/demo --time-limit 10
 SynAPS-ProgramPlan synth --out program.json
-SynAPS-ProgramPlan import a.xml b.xml --codes okr1 okr2 --links links.csv --out program.json
+SynAPS-ProgramPlan import program.xlsx --out program.json
+SynAPS-ProgramPlan template --out program.xlsx
 SynAPS-ProgramPlan analyze program.json
 SynAPS-ProgramPlan solve program.json --out plan.json --explain
 SynAPS-ProgramPlan scenarios program.json --out-dir out/scen --explain
@@ -18,6 +19,7 @@ SynAPS-ProgramPlan explain program.json plan.json
 SynAPS-ProgramPlan witness program.json
 SynAPS-ProgramPlan report program.json out/scen/plan_A.json --out report.html
 SynAPS-ProgramPlan repair program.json plan.json --status-date 2026-11-02 --freeze-wd 10 --out plan2.json --out-program program2.json
+SynAPS-ProgramPlan risk program.json plan.json --runs 200 --seed 42
 SynAPS-ProgramPlan version
 ```
 
@@ -40,4 +42,4 @@ python -m pytest tests -q
 python scripts/lint_claims.py
 ```
 
-SynAPS подключается напрямую и фиксируется коммитом в `src/synaps_programplan/versions.py` и `pyproject.toml`. Команда после установки: `SynAPS-ProgramPlan`. Из исходников: `python -m synaps_programplan`.
+SynAPS подключается напрямую, без форка, и фиксируется коммитом `786cf1b3bc915941558e7e50b2935de684a32643` в `src/synaps_programplan/versions.py`, `pyproject.toml`, `CLAIMS_REGISTRY.md` и этом файле. Команда после установки: `SynAPS-ProgramPlan`. Из исходников: `python -m synaps_programplan`. HTTP-контур без хранения: `uvicorn synaps_programplan.api:app`. Карта требований: `docs/traceability-matrix.md`.

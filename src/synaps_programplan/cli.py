@@ -22,9 +22,11 @@ from synaps_programplan.disrupt import Disruption, apply_disruption, roll_forwar
 from synaps_programplan.evidence import fingerprint
 from synaps_programplan.explanations import attach_counterfactuals, explain, infeasibility_witness
 from synaps_programplan.io import file_sha256, load_plan, load_program, save_plan, save_program
+from synaps_programplan.io.excel import read_excel, write_template
 from synaps_programplan.io.mspdi import ImportReport, read_mspdi
 from synaps_programplan.merge import merge_projects, read_links_csv
 from synaps_programplan.model import Provenance, ProvenanceKind
+from synaps_programplan.montecarlo import simulate
 from synaps_programplan.planner import SolveConfig, plan
 from synaps_programplan.report import build_report
 from synaps_programplan.result import PlanResult, Severity
@@ -83,6 +85,27 @@ def cmd_synth(args: argparse.Namespace) -> int:
 
 
 def cmd_import(args: argparse.Namespace) -> int:
+    if args.files[0].suffix.lower() == ".xlsx":
+        if len(args.files) != 1:
+            raise ValueError("Excel-импорт принимает одну книгу со всеми ОКР")
+        program = read_excel(
+            args.files[0],
+            provenance=Provenance(
+                kind=ProvenanceKind(args.provenance),
+                source=args.files[0].name,
+                source_file_hash=file_sha256(args.files[0]),
+            ),
+        )
+        save_program(program, args.out)
+        _print(
+            {
+                "out": str(args.out),
+                "tasks": len(program.tasks),
+                "projects": len(program.projects),
+                "input_hash": fingerprint(program),
+            }
+        )
+        return 0
     report = ImportReport()
     projects = []
     for index, path in enumerate(args.files):
@@ -115,6 +138,12 @@ def cmd_import(args: argparse.Namespace) -> int:
             "notes": report.notes + merge.notes,
         }
     )
+    return 0
+
+
+def cmd_template(args: argparse.Namespace) -> int:
+    write_template(args.out)
+    _print({"out": str(args.out), "sheets": 9})
     return 0
 
 
@@ -244,6 +273,13 @@ def _unavailable(text: str) -> tuple[str, date, date]:
     return resource, date.fromisoformat(start), date.fromisoformat(end)
 
 
+def cmd_risk(args: argparse.Namespace) -> int:
+    program = load_program(args.program)
+    report = simulate(program, load_plan(args.plan), runs=args.runs, seed=args.seed)
+    _print(report.as_dict())
+    return 0
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     """One command: synthetic program -> analysis -> scenarios -> explanations -> report."""
     out: Path = args.out_dir
@@ -315,7 +351,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--infeasible", action="store_true")
     p.set_defaults(func=cmd_synth)
 
-    p = sub.add_parser("import", help="импорт и объединение файлов MS Project (MSPDI XML)")
+    p = sub.add_parser("import", help="импорт MSPDI XML (несколько файлов) или одной книги Excel")
     p.add_argument("files", type=Path, nargs="+")
     p.add_argument("--codes", nargs="*")
     p.add_argument("--links", type=Path, help="CSV межпроектных связей")
@@ -326,6 +362,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--provenance", choices=[k.value for k in ProvenanceKind], default="experiment")
     p.add_argument("--out", type=Path, required=True)
     p.set_defaults(func=cmd_import)
+
+    p = sub.add_parser("template", help="пустая книга Excel для сводной программы")
+    p.add_argument("--out", type=Path, required=True)
+    p.set_defaults(func=cmd_template)
 
     for name, func, text in (
         ("analyze", cmd_analyze, "конфликты и качество исходных планов"),
@@ -387,6 +427,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-program", type=Path, required=True)
     _solve_args(p)
     p.set_defaults(func=cmd_repair)
+
+    p = sub.add_parser("risk", help="P50/P80/P90 по принятому плану")
+    p.add_argument("program", type=Path)
+    p.add_argument("plan", type=Path)
+    p.add_argument("--runs", type=int, default=200)
+    p.add_argument("--seed", type=int, default=42)
+    p.set_defaults(func=cmd_risk)
 
     p = sub.add_parser("demo", help="демонстрация одной командой")
     p.add_argument("--out-dir", type=Path, default=Path("out/demo"))
