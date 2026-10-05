@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from synaps_okrplan.model import Demand, TaskStatus, positive_cycle, skill_pool_conflicts
+from synaps_programplan.model import Demand, TaskStatus, positive_cycle, skill_pool_conflicts
 from tests.conftest import dep, needs, person, program, stand, task, uses
 
 

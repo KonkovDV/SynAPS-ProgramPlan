@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from synaps_okrplan.model import (
+from synaps_programplan.model import (
     Calendar,
     CalendarBase,
     Demand,

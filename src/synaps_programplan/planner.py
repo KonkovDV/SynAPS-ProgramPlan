@@ -16,9 +16,9 @@ from synaps.model import Assignment, ScheduleResult, SolverStatus
 from synaps.portfolio import PortfolioValidationError, solve_schedule
 from synaps.validation import verify_schedule_result
 
-from synaps_okrplan.binding import Binding, bind_exact
-from synaps_okrplan.checker import check_plan
-from synaps_okrplan.compiler import (
+from synaps_programplan.binding import Binding, bind_exact
+from synaps_programplan.checker import check_plan
+from synaps_programplan.compiler import (
     Compiled,
     EdgeMode,
     anchor_is_end_dst,
@@ -26,10 +26,10 @@ from synaps_okrplan.compiler import (
     compile_program,
     reference_index,
 )
-from synaps_okrplan.cpm import cpm
-from synaps_okrplan.evidence import evidence_stamp, fingerprint
-from synaps_okrplan.model import Dependency, OKRProgram, TaskStatus, skill_pool_conflicts
-from synaps_okrplan.result import (
+from synaps_programplan.cpm import cpm
+from synaps_programplan.evidence import evidence_stamp, fingerprint
+from synaps_programplan.model import Dependency, OKRProgram, TaskStatus, skill_pool_conflicts
+from synaps_programplan.result import (
     KPI,
     Claim,
     MilestoneKPI,

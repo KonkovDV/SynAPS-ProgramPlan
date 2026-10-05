@@ -36,8 +36,8 @@ from synaps.model import (
 )
 from synaps.precedence import PrecedenceEdge, PrecedenceType
 
-from synaps_okrplan.calendar import DayCounter, WorkCalendar, WorkdayAxis
-from synaps_okrplan.model import (
+from synaps_programplan.calendar import DayCounter, WorkCalendar, WorkdayAxis
+from synaps_programplan.model import (
     Dependency,
     DependencyType,
     OKRProgram,
@@ -48,7 +48,7 @@ from synaps_okrplan.model import (
 
 EdgeMode = Literal["native", "windows"]
 
-_NS = uuid5(NAMESPACE_URL, "https://github.com/KonkovDV/SynAPS-OKRPlan")
+_NS = uuid5(NAMESPACE_URL, "https://github.com/KonkovDV/SynAPS-ProgramPlan")
 
 
 def sid(*parts: str) -> UUID:

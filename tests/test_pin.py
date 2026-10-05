@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from synaps_okrplan.versions import SYNAPS_COMMIT
+from synaps_programplan.versions import SYNAPS_COMMIT
 
 
 def test_synaps_pin_is_a_commit_and_matches_pyproject() -> None:

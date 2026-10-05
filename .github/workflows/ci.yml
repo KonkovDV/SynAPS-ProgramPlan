@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install SynAPS from the pinned commit and OKRPlan
+      - name: Install SynAPS from the pinned commit and SynAPS-ProgramPlan
         run: |
           pip install -e ".[dev]"
       - run: python -m pytest tests -q

@@ -11,16 +11,16 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date
 
-from synaps_okrplan.calendar import DayCounter, WorkCalendar
-from synaps_okrplan.capacity import Load, overloads
-from synaps_okrplan.model import (
+from synaps_programplan.calendar import DayCounter, WorkCalendar
+from synaps_programplan.capacity import Load, overloads
+from synaps_programplan.model import (
     DependencyType,
     OKRProgram,
     Task,
     TaskStatus,
     skill_pool_conflicts,
 )
-from synaps_okrplan.result import Severity, TaskPlan, Violation
+from synaps_programplan.result import Severity, TaskPlan, Violation
 
 HARD = Severity.HARD
 

@@ -20,10 +20,10 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from synaps_okrplan.compiler import Compiled, anchor_is_end_dst, anchor_is_end_src, compile_program
-from synaps_okrplan.model import OKRProgram, TaskStatus
-from synaps_okrplan.planner import Adjustments, SolveConfig, plan
-from synaps_okrplan.result import Claim, Explanation, PlanResult, TaskPlan
+from synaps_programplan.compiler import Compiled, anchor_is_end_dst, anchor_is_end_src, compile_program
+from synaps_programplan.model import OKRProgram, TaskStatus
+from synaps_programplan.planner import Adjustments, SolveConfig, plan
+from synaps_programplan.result import Claim, Explanation, PlanResult, TaskPlan
 
 _WINDOW_TEXT = {
     "status_date": "не может начаться раньше даты статуса программы",

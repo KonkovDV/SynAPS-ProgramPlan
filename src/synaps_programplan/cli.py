@@ -1,4 +1,4 @@
-"""Command line: ``okrplan <command>``.
+"""Command line: ``SynAPS-ProgramPlan <command>``.
 
 Exit codes: 0 - accepted plan / check passed; 1 - no accepted plan, infeasible
 or violations found; 2 - bad input or usage.
@@ -16,21 +16,21 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from synaps_okrplan.checker import check_plan
-from synaps_okrplan.conflicts import analyze
-from synaps_okrplan.disrupt import Disruption, apply_disruption, roll_forward
-from synaps_okrplan.evidence import fingerprint
-from synaps_okrplan.explanations import attach_counterfactuals, explain, infeasibility_witness
-from synaps_okrplan.io import file_sha256, load_plan, load_program, save_plan, save_program
-from synaps_okrplan.io.mspdi import ImportReport, read_mspdi
-from synaps_okrplan.merge import merge_projects, read_links_csv
-from synaps_okrplan.model import Provenance, ProvenanceKind
-from synaps_okrplan.planner import SolveConfig, plan
-from synaps_okrplan.report import build_report
-from synaps_okrplan.result import PlanResult, Severity
-from synaps_okrplan.scenarios import WhatIf, compare, run_scenarios
-from synaps_okrplan.synthetic import SyntheticSpec, generate
-from synaps_okrplan.versions import CLAIM_LEVEL, ISO16290_TRL, OKRPLAN_VERSION, SYNAPS_COMMIT
+from synaps_programplan.checker import check_plan
+from synaps_programplan.conflicts import analyze
+from synaps_programplan.disrupt import Disruption, apply_disruption, roll_forward
+from synaps_programplan.evidence import fingerprint
+from synaps_programplan.explanations import attach_counterfactuals, explain, infeasibility_witness
+from synaps_programplan.io import file_sha256, load_plan, load_program, save_plan, save_program
+from synaps_programplan.io.mspdi import ImportReport, read_mspdi
+from synaps_programplan.merge import merge_projects, read_links_csv
+from synaps_programplan.model import Provenance, ProvenanceKind
+from synaps_programplan.planner import SolveConfig, plan
+from synaps_programplan.report import build_report
+from synaps_programplan.result import PlanResult, Severity
+from synaps_programplan.scenarios import WhatIf, compare, run_scenarios
+from synaps_programplan.synthetic import SyntheticSpec, generate
+from synaps_programplan.versions import CLAIM_LEVEL, ISO16290_TRL, NAME, SYNAPS_COMMIT, VERSION
 
 
 def _print(payload: Any) -> None:
@@ -290,7 +290,8 @@ def cmd_demo(args: argparse.Namespace) -> int:
 def cmd_version(_: argparse.Namespace) -> int:
     _print(
         {
-            "okrplan": OKRPLAN_VERSION,
+            "name": NAME,
+            "version": VERSION,
             "synaps_commit": SYNAPS_COMMIT,
             "trl_iso16290": ISO16290_TRL,
             "claim_level": CLAIM_LEVEL,
@@ -300,7 +301,9 @@ def cmd_version(_: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="okrplan", description="SynAPS-OKRPlan: сводный план программы ОКР")
+    parser = argparse.ArgumentParser(
+        prog="SynAPS-ProgramPlan", description="SynAPS-ProgramPlan: сводный план программы ОКР"
+    )
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -411,6 +414,6 @@ def main(argv: list[str] | None = None) -> int:
     try:
         code: int = args.func(args)
     except (ValidationError, ValueError, FileNotFoundError, json.JSONDecodeError) as exc:
-        sys.stderr.write(f"okrplan: input error: {exc}\n")
+        sys.stderr.write(f"SynAPS-ProgramPlan: input error: {exc}\n")
         return 2
     return code

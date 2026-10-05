@@ -7,12 +7,12 @@ import pytest
 from synaps.model import ScheduleResult, SolverStatus
 from synaps.validation import verify_schedule_result
 
-from synaps_okrplan.checker import check_plan
-from synaps_okrplan.compiler import compile_program
-from synaps_okrplan.model import OKRProgram, TaskStatus
-from synaps_okrplan.planner import SolveConfig, _warm_start, plan
-from synaps_okrplan.result import PlanResult, Severity, TaskPlan
-from synaps_okrplan.synthetic import SyntheticSpec, generate
+from synaps_programplan.checker import check_plan
+from synaps_programplan.compiler import compile_program
+from synaps_programplan.model import OKRProgram, TaskStatus
+from synaps_programplan.planner import SolveConfig, _warm_start, plan
+from synaps_programplan.result import PlanResult, Severity, TaskPlan
+from synaps_programplan.synthetic import SyntheticSpec, generate
 from tests.conftest import dep, needs, person, program, stand, task, uses
 
 

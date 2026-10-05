@@ -14,9 +14,9 @@ import random
 from dataclasses import dataclass
 from datetime import date
 
-from synaps_okrplan.calendar import WorkCalendar, WorkdayAxis
-from synaps_okrplan.cpm import cpm
-from synaps_okrplan.model import (
+from synaps_programplan.calendar import WorkCalendar, WorkdayAxis
+from synaps_programplan.cpm import cpm
+from synaps_programplan.model import (
     FTE_UNITS,
     Baseline,
     BaselineDates,
@@ -282,7 +282,7 @@ def _with_dates(rng: random.Random, spec: SyntheticSpec, draft: OKRProgram) -> O
 def _levelled_per_project(
     draft: OKRProgram, exceptions: list[CapacityException]
 ) -> dict[str, tuple[int, int]]:
-    from synaps_okrplan.planner import SolveConfig, plan  # local: planner does not depend on synthetic
+    from synaps_programplan.planner import SolveConfig, plan  # local: planner does not depend on synthetic
 
     durations = {task.id: task.duration_wd for task in draft.tasks}
     lower = {task.id: (1 if task.duration_wd == 0 else 0) for task in draft.tasks}

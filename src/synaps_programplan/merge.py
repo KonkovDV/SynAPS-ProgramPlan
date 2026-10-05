@@ -15,8 +15,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-from synaps_okrplan.io.mspdi import ImportedProject
-from synaps_okrplan.model import (
+from synaps_programplan.io.mspdi import ImportedProject
+from synaps_programplan.model import (
     Calendar,
     CalendarBase,
     Demand,

@@ -3,13 +3,13 @@ requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
 
 [project]
-name = "synaps-okrplan"
+name = "SynAPS-ProgramPlan"
 version = "0.1.0"
-description = "Auditable multi-project R&D (OKR) program planning contour on SynAPS"
+description = "SynAPS-ProgramPlan: auditable multi-project R&D program planning on SynAPS"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
-authors = [{ name = "SynAPS OKRPlan contributors" }]
+authors = [{ name = "SynAPS-ProgramPlan contributors" }]
 keywords = ["RCPSP", "multi-project", "R&D", "OKR", "scheduling", "constraint-programming"]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -19,7 +19,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 # SynAPS is consumed directly (no fork) and pinned by commit, never by branch.
-# Keep the SHA in sync with synaps_okrplan.versions.SYNAPS_COMMIT (tested).
+# Keep the SHA in sync with synaps_programplan.versions.SYNAPS_COMMIT (tested).
 dependencies = [
   "synaps @ git+https://github.com/KonkovDV/SynAPS.git@786cf1b3bc915941558e7e50b2935de684a32643",
   "pydantic>=2.9",
@@ -38,16 +38,17 @@ dev = [
 ]
 
 [project.scripts]
-okrplan = "synaps_okrplan.cli:main"
+SynAPS-ProgramPlan = "synaps_programplan.cli:main"
 
 [project.urls]
+Homepage = "https://github.com/KonkovDV/SynAPS-ProgramPlan"
 Upstream = "https://github.com/KonkovDV/SynAPS"
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/synaps_okrplan"]
+packages = ["src/synaps_programplan"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -66,7 +67,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-packages = ["synaps_okrplan"]
+packages = ["synaps_programplan"]
 mypy_path = "src"
 
 [[tool.mypy.overrides]]

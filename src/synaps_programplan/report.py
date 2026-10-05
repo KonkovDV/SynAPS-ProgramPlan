@@ -13,14 +13,14 @@ from datetime import date
 from importlib import resources
 from typing import Any
 
-from synaps_okrplan.calendar import is_provisional
-from synaps_okrplan.compiler import compile_program
-from synaps_okrplan.conflicts import Analysis
-from synaps_okrplan.model import OKRProgram, TaskStatus
-from synaps_okrplan.planner import resource_profiles
-from synaps_okrplan.result import PlanResult
-from synaps_okrplan.scenarios import compare
-from synaps_okrplan.versions import CLAIM_LEVEL, ISO16290_TRL, OKRPLAN_VERSION, SYNAPS_COMMIT
+from synaps_programplan.calendar import is_provisional
+from synaps_programplan.compiler import compile_program
+from synaps_programplan.conflicts import Analysis
+from synaps_programplan.model import OKRProgram, TaskStatus
+from synaps_programplan.planner import resource_profiles
+from synaps_programplan.result import PlanResult
+from synaps_programplan.scenarios import compare
+from synaps_programplan.versions import CLAIM_LEVEL, ISO16290_TRL, NAME, SYNAPS_COMMIT, VERSION
 
 
 def report_data(
@@ -117,7 +117,8 @@ def report_data(
         "quality": [q.as_dict() for q in analysis.quality] if analysis else [],
         "witness": witness,
         "versions": {
-            "okrplan": OKRPLAN_VERSION,
+            "name": NAME,
+            "version": VERSION,
             "synaps": SYNAPS_COMMIT,
             "trl": ISO16290_TRL,
             "claim_level": CLAIM_LEVEL,
@@ -134,7 +135,7 @@ def _iso(value: date | None) -> str | None:
 def render_html(data: dict[str, Any], title: str | None = None) -> str:
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     heading = html.escape(title or f"Сводный план программы ОКР — {data['program']['name']}")
-    template = resources.files("synaps_okrplan").joinpath("report_template.html").read_text("utf-8")
+    template = resources.files("synaps_programplan").joinpath("report_template.html").read_text("utf-8")
     return template.replace("__TITLE__", heading).replace("__DATA__", payload)
 
 

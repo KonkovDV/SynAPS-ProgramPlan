@@ -20,10 +20,10 @@ from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from datetime import date
 
-from synaps_okrplan.compiler import compile_program, reference_index
-from synaps_okrplan.model import OKRProgram, TaskStatus
-from synaps_okrplan.planner import Adjustments, SolveConfig, plan
-from synaps_okrplan.result import PlanResult
+from synaps_programplan.compiler import compile_program, reference_index
+from synaps_programplan.model import OKRProgram, TaskStatus
+from synaps_programplan.planner import Adjustments, SolveConfig, plan
+from synaps_programplan.result import PlanResult
 
 SHIFT_LADDER = (0, 2, 5, 10, 20, 40, 80, 160)
 

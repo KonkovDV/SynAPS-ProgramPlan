@@ -4,8 +4,8 @@ from datetime import date
 
 import pytest
 
-from synaps_okrplan.calendar import DayCounter, WorkCalendar, WorkdayAxis, is_provisional
-from synaps_okrplan.model import Calendar, CalendarBase
+from synaps_programplan.calendar import DayCounter, WorkCalendar, WorkdayAxis, is_provisional
+from synaps_programplan.model import Calendar, CalendarBase
 
 RU = WorkCalendar.from_model(Calendar(id="ru", base=CalendarBase.RU_PRODUCTION))
 

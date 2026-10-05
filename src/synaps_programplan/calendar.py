@@ -1,7 +1,7 @@
 """Working-day calendars and the virtual working-day axis.
 
 The axis is the key compilation trick: SynAPS works in integer minutes, and
-OKRPlan maps ONE kernel minute to ONE working day of the program calendar.
+SynAPS-ProgramPlan maps ONE kernel minute to ONE working day of the program calendar.
 Closed days vanish from the axis, so a multi-day task never "straddles" a
 weekend and CP-SAT domains stay small (5 years ~ 1 250 values).
 
@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from functools import lru_cache
 
-from synaps_okrplan.model import Calendar, CalendarBase
+from synaps_programplan.model import Calendar, CalendarBase
 
 _STATUTORY = [(1, d) for d in range(1, 9)] + [(2, 23), (3, 8), (5, 1), (5, 9), (6, 12), (11, 4)]
 

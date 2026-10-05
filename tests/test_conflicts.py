@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from synaps_okrplan.conflicts import analyze
+from synaps_programplan.conflicts import analyze
 from tests.conftest import dep, program, stand, task, uses
 
 

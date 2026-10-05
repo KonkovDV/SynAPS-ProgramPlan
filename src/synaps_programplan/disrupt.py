@@ -11,9 +11,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
-from synaps_okrplan.calendar import WorkdayAxis
-from synaps_okrplan.compiler import program_calendar
-from synaps_okrplan.model import (
+from synaps_programplan.calendar import WorkdayAxis
+from synaps_programplan.compiler import program_calendar
+from synaps_programplan.model import (
     Baseline,
     BaselineDates,
     CapacityException,
@@ -21,7 +21,7 @@ from synaps_okrplan.model import (
     OKRProgram,
     TaskStatus,
 )
-from synaps_okrplan.result import PlanResult
+from synaps_programplan.result import PlanResult
 
 
 @dataclass

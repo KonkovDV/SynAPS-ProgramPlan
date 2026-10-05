@@ -1,4 +1,4 @@
-# SynAPS-OKRPlan
+# SynAPS-ProgramPlan
 
 Контур сводного плана программы ОКР поверх [SynAPS](https://github.com/KonkovDV/SynAPS): несколько проектов, общие люди и стенды, связи FS/SS/FF/SF, директивные сроки, проверка и объяснение сдвигов.
 
@@ -7,18 +7,18 @@
 ## Команды
 
 ```text
-okrplan demo --out-dir out/demo --time-limit 10
-okrplan synth --out program.json
-okrplan import a.xml b.xml --codes okr1 okr2 --links links.csv --out program.json
-okrplan analyze program.json
-okrplan solve program.json --out plan.json --explain
-okrplan scenarios program.json --out-dir out/scen --explain
-okrplan check program.json plan.json
-okrplan explain program.json plan.json
-okrplan witness program.json
-okrplan report program.json out/scen/plan_A.json --out report.html
-okrplan repair program.json plan.json --status-date 2026-11-02 --freeze-wd 10 --out plan2.json --out-program program2.json
-okrplan version
+SynAPS-ProgramPlan demo --out-dir out/demo --time-limit 10
+SynAPS-ProgramPlan synth --out program.json
+SynAPS-ProgramPlan import a.xml b.xml --codes okr1 okr2 --links links.csv --out program.json
+SynAPS-ProgramPlan analyze program.json
+SynAPS-ProgramPlan solve program.json --out plan.json --explain
+SynAPS-ProgramPlan scenarios program.json --out-dir out/scen --explain
+SynAPS-ProgramPlan check program.json plan.json
+SynAPS-ProgramPlan explain program.json plan.json
+SynAPS-ProgramPlan witness program.json
+SynAPS-ProgramPlan report program.json out/scen/plan_A.json --out report.html
+SynAPS-ProgramPlan repair program.json plan.json --status-date 2026-11-02 --freeze-wd 10 --out plan2.json --out-program program2.json
+SynAPS-ProgramPlan version
 ```
 
 Код выхода: 0 — план принят или проверка чиста, 1 — принятого плана нет, 2 — неверные входные данные.
@@ -40,4 +40,4 @@ python -m pytest tests -q
 python scripts/lint_claims.py
 ```
 
-SynAPS подключается напрямую и фиксируется коммитом в `src/synaps_okrplan/versions.py` и `pyproject.toml`.
+SynAPS подключается напрямую и фиксируется коммитом в `src/synaps_programplan/versions.py` и `pyproject.toml`. Команда после установки: `SynAPS-ProgramPlan`. Из исходников: `python -m synaps_programplan`.

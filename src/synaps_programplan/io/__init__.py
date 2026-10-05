@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from synaps_okrplan.model import OKRProgram
-from synaps_okrplan.result import PlanResult
+from synaps_programplan.model import OKRProgram
+from synaps_programplan.result import PlanResult
 
 
 def file_sha256(path: Path) -> str:

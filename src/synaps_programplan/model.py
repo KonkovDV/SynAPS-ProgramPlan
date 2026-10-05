@@ -277,7 +277,7 @@ class Provenance(_Strict):
 class OKRProgram(_Strict):
     """Complete, self-contained input of one planning run."""
 
-    schema_version: str = "okrplan.program.v1"
+    schema_version: str = "SynAPS-ProgramPlan.program.v1"
     program: Program
     calendars: list[Calendar]
     projects: list[Project]

@@ -18,11 +18,11 @@ from dataclasses import dataclass, field
 from datetime import date
 from enum import StrEnum
 
-from synaps_okrplan.calendar import WorkCalendar, WorkdayAxis
-from synaps_okrplan.capacity import Load, overloads
-from synaps_okrplan.compiler import daily_availability, program_calendar
-from synaps_okrplan.cpm import cpm
-from synaps_okrplan.model import (
+from synaps_programplan.calendar import WorkCalendar, WorkdayAxis
+from synaps_programplan.capacity import Load, overloads
+from synaps_programplan.compiler import daily_availability, program_calendar
+from synaps_programplan.cpm import cpm
+from synaps_programplan.model import (
     DependencyType,
     OKRProgram,
     ResourceKind,
@@ -132,7 +132,7 @@ def analyze(program: OKRProgram) -> Analysis:
 def _overloads(
     program: OKRProgram, axis: WorkdayAxis, positions: dict[str, tuple[int, int]]
 ) -> list[Conflict]:
-    from synaps_okrplan.calendar import DayCounter
+    from synaps_programplan.calendar import DayCounter
 
     counter = DayCounter(program_calendar(program))
     base = counter.ordinal_on_or_after(program.program.planning_start)

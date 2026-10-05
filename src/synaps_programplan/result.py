@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from synaps_okrplan.model import TaskStatus
+from synaps_programplan.model import TaskStatus
 
 
 class _Strict(BaseModel):
@@ -109,7 +109,7 @@ class Explanation(_Strict):
 
 
 class PlanResult(_Strict):
-    schema_version: str = "okrplan.result.v1"
+    schema_version: str = "SynAPS-ProgramPlan.result.v1"
     scenario_id: str
     label: str
     tasks: list[TaskPlan]

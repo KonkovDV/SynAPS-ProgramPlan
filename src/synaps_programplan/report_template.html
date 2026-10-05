@@ -64,7 +64,7 @@ const PCOL=["#4c78a8","#59a14f","#9c755f","#b07aa1","#f28e2b","#76b7b2","#edc948
 const projColor={};D.projects.forEach((p,i)=>projColor[p.id]=PCOL[i%PCOL.length]);
 const projName=Object.fromEntries(D.projects.map(p=>[p.id,p.code]));
 const resName=Object.fromEntries(D.resources.map(r=>[r.id,r.code]));
-$("sub").textContent=`Дата статуса ${fmt(D.program.status_date)} · данные: ${D.program.provenance} · OKRPlan ${D.versions.okrplan} · SynAPS ${String(D.versions.synaps).slice(0,12)} · TRL ${D.versions.trl} (${D.versions.claim_level})`;
+$("sub").textContent=`Дата статуса ${fmt(D.program.status_date)} · данные: ${D.program.provenance} · SynAPS-ProgramPlan ${D.versions.version} · SynAPS ${String(D.versions.synaps).slice(0,12)} · TRL ${D.versions.trl} (${D.versions.claim_level})`;
 (function banner(){let h="";
  if(D.provisional_years.length)h+=`<div class="warnbox">Производственный календарь на ${D.provisional_years.join(", ")} не утверждён постановлением Правительства РФ — использовано правило ст. 112 ТК РФ (предварительно).</div>`;
  if(D.program.provenance!=="customer_anonymized")h+=`<div class="warnbox">Данные программы: ${esc(D.program.provenance)}. Результаты не являются результатами на данных заказчика.</div>`;

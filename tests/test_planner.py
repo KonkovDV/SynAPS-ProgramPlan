@@ -5,10 +5,10 @@ from datetime import date
 import pytest
 from synaps.model import SolverStatus
 
-from synaps_okrplan.checker import check_plan
-from synaps_okrplan.model import CapacityException, ExceptionReason, TaskStatus
-from synaps_okrplan.planner import SolveConfig, _claim, plan
-from synaps_okrplan.result import Claim, PlanResult, Severity
+from synaps_programplan.checker import check_plan
+from synaps_programplan.model import CapacityException, ExceptionReason, TaskStatus
+from synaps_programplan.planner import SolveConfig, _claim, plan
+from synaps_programplan.result import Claim, PlanResult, Severity
 from tests.conftest import dep, needs, person, program, stand, task, uses
 
 FAST = SolveConfig(time_limit_s=10)

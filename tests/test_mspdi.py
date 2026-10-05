@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from synaps_okrplan.io.mspdi import ImportReport, read_mspdi, write_plan_mspdi
-from synaps_okrplan.merge import merge_projects
-from synaps_okrplan.model import DependencyType, TaskKind, TaskStatus
-from synaps_okrplan.planner import SolveConfig, plan
+from synaps_programplan.io.mspdi import ImportReport, read_mspdi, write_plan_mspdi
+from synaps_programplan.merge import merge_projects
+from synaps_programplan.model import DependencyType, TaskKind, TaskStatus
+from synaps_programplan.planner import SolveConfig, plan
 
 _XML = """<?xml version="1.0" encoding="UTF-8"?>
 <Project xmlns="http://schemas.microsoft.com/project">

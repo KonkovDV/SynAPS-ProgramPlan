@@ -27,7 +27,7 @@ from pathlib import Path
 
 from defusedxml import ElementTree as SafeET
 
-from synaps_okrplan.model import (
+from synaps_programplan.model import (
     FTE_UNITS,
     Demand,
     Dependency,
@@ -41,7 +41,7 @@ from synaps_okrplan.model import (
     WBSKind,
     WBSNode,
 )
-from synaps_okrplan.result import PlanResult, TaskPlan
+from synaps_programplan.result import PlanResult, TaskPlan
 
 NS = "http://schemas.microsoft.com/project"
 _LINK = {"0": DependencyType.FF, "1": DependencyType.FS, "2": DependencyType.SF, "3": DependencyType.SS}

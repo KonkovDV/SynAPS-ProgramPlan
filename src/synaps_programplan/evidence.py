@@ -13,14 +13,15 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from synaps_okrplan.versions import CLAIM_LEVEL, ISO16290_TRL, OKRPLAN_VERSION, SYNAPS_COMMIT
+from synaps_programplan.versions import CLAIM_LEVEL, ISO16290_TRL, NAME, SYNAPS_COMMIT, VERSION
 
 
 def runtime_manifest() -> dict[str, str]:
     versions = {
         "python": platform.python_version(),
         "platform": platform.platform(),
-        "okrplan": OKRPLAN_VERSION,
+        "name": NAME,
+        "version": VERSION,
         "synaps_commit": SYNAPS_COMMIT,
     }
     for dist in ("ortools", "pydantic"):
@@ -71,7 +72,8 @@ def evidence_stamp(
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
-        "okrplan_version": OKRPLAN_VERSION,
+        "name": NAME,
+        "version": VERSION,
         "synaps_commit": SYNAPS_COMMIT,
         "claim_level": CLAIM_LEVEL,
         "iso16290_trl": ISO16290_TRL,

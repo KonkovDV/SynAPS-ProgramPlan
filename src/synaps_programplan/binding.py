@@ -16,8 +16,8 @@ from dataclasses import dataclass, field
 
 from ortools.sat.python import cp_model
 
-from synaps_okrplan.compiler import Compiled
-from synaps_okrplan.model import OKRProgram
+from synaps_programplan.compiler import Compiled
+from synaps_programplan.model import OKRProgram
 
 
 @dataclass
