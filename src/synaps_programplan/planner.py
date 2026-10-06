@@ -46,7 +46,7 @@ Objective = Literal["due", "finish", "stability"]
 
 @dataclass(frozen=True)
 class SolveConfig:
-    solver: Literal["cpsat", "greedy", "alns", "rhc"] = "cpsat"
+    solver: Literal["cpsat", "greedy"] = "cpsat"
     time_limit_s: int = 20
     seed: int = 42
     objective: Objective = "finish"
@@ -55,25 +55,17 @@ class SolveConfig:
     compact: bool = True
 
     def solver_config(self) -> str:
-        return {
-            "greedy": "GREED",
-            "cpsat": "CPSAT-30",
-            "alns": "ALNS-300",
-            "rhc": "RHC-GREEDY",
-        }[self.solver]
+        return "GREED" if self.solver == "greedy" else "CPSAT-30"
 
     def solve_kwargs(self) -> dict[str, Any]:
         if self.solver == "greedy":
             return {}
-        if self.solver == "cpsat":
-            return {
-                "time_limit_s": self.time_limit_s,
-                "random_seed": self.seed,
-                "objective_mode": "epsilon_primary",
-                "primary_objective": "tardiness",
-            }
-        # ALNS and RHC are kernel heuristics. They do not prove optimality.
-        return {"time_limit_s": self.time_limit_s, "random_seed": self.seed}
+        return {
+            "time_limit_s": self.time_limit_s,
+            "random_seed": self.seed,
+            "objective_mode": "epsilon_primary",
+            "primary_objective": "tardiness",
+        }
 
 
 @dataclass
@@ -229,6 +221,9 @@ def solve_positions(
         except PortfolioValidationError as exc:
             rejected = ScheduleResult(solver_name=config.solver_config(), status=SolverStatus.ERROR)
             return SolveRun(compiled, rejected, {}, iterations, f"kernel rejected plan: {exc}")
+        if result.status is SolverStatus.ERROR:
+            detail = result.metadata.get("detail") or result.metadata.get("error") or "kernel solver error"
+            return SolveRun(compiled, result, {}, iterations, str(detail))
         positions = _positions(compiled, result.assignments)
         if result.status not in (SolverStatus.FEASIBLE, SolverStatus.OPTIMAL) or not compiled.cross_edges:
             return SolveRun(compiled, result, positions, iterations, restricted=iterations > 1)
@@ -544,7 +539,7 @@ def _claim(status: SolverStatus, ok: bool, config: SolveConfig, solved: bool, *,
         return Claim.ERROR
     if not ok:
         return Claim.REJECTED
-    if config.solver != "cpsat":
+    if config.solver == "greedy":
         return Claim.HEURISTIC_FEASIBLE
     # OPTIMAL refers to the kernel objective on the compiled problem; the
     # left-shift can only improve it, so the claim survives compaction.

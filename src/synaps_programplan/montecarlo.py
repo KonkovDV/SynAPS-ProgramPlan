@@ -146,6 +146,9 @@ class _Model:
     hard_targets: dict[str, int]
     template: dict[str, list[int]]
     horizon: int
+    # Accepted-plan anchors of finished work. Simulated duration of DONE is 0,
+    # so max-lag checks must use these indices, not the drawn duration.
+    history: dict[str, tuple[int, int]]
 
 
 def simulate(
@@ -284,6 +287,11 @@ def _model(program: OKRProgram, plan: PlanResult) -> tuple[_Model, list[str]]:
         hard_targets=hard_targets,
         template={rid: list(days) for rid, days in compiled.availability.items()},
         horizon=len(axis),
+        history={
+            row.task_id: (row.start_index, row.end_index)
+            for row in plan.tasks
+            if row.task_id in tasks and tasks[row.task_id].status is TaskStatus.DONE
+        },
     )
     return model, unbound
 
@@ -436,7 +444,7 @@ def _schedule(model: _Model, durations: dict[str, int]) -> dict[str, int] | None
     for task_id in model.order:
         duration = durations[task_id]
         if model.tasks[task_id].status is TaskStatus.DONE:
-            placed[task_id] = 0
+            placed[task_id] = model.history.get(task_id, (0, 0))[0]
             continue
         earliest = model.lower.get(task_id, 1 if duration == 0 else 0)
         for edge in model.incoming[task_id]:
@@ -476,10 +484,14 @@ def _within_max_lags(model: _Model, placed: dict[str, int], durations: dict[str,
             if edge.max_lag_wd is None:
                 continue
             src = edge.src_task_id
-            if model.tasks[src].status is TaskStatus.DONE or edge.dst_task_id not in placed:
-                continue
+            if src not in placed or edge.dst_task_id not in placed:
+                return False
+            src_duration = durations[src]
+            if model.tasks[src].status is TaskStatus.DONE:
+                start, end = model.history.get(src, (placed[src], placed[src]))
+                src_duration = end - start
             gap = placed[edge.dst_task_id] - placed[src]
-            limit = _anchor_offset(edge.type, durations[src], durations[edge.dst_task_id]) + edge.max_lag_wd
+            limit = _anchor_offset(edge.type, src_duration, durations[edge.dst_task_id]) + edge.max_lag_wd
             if gap > limit:
                 return False
     return True

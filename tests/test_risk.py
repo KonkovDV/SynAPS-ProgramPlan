@@ -55,6 +55,36 @@ def test_a_draw_that_breaks_a_max_lag_is_not_a_sample() -> None:
     assert nominal.scheduled_runs == 0
 
 
+def test_max_lag_from_finished_work_drops_a_late_successor() -> None:
+    from synaps_programplan.model import RiskDriver, TaskStatus
+
+    prog = program(
+        [
+            task(
+                "a",
+                3,
+                status=TaskStatus.DONE,
+                actual_start=date(2026, 10, 5),
+                actual_finish=date(2026, 10, 7),
+            ),
+            task("c", 1),
+            task("b", 1),
+        ],
+        [dep("a", "b", lag=0, max_lag_wd=0), dep("c", "b")],
+        risk_drivers=[
+            RiskDriver(id="R", name="stretch", probability=1, low=8, mode=8, high=8, task_ids=["c"])
+        ],
+    )
+    accepted = plan(prog, SolveConfig(time_limit_s=5))
+    assert accepted.outcome.ok
+    quiet = simulate(
+        prog.model_copy(update={"risk_drivers": []}), accepted, runs=4, seed=1, low_factor=1, high_factor=1
+    )
+    stretched = simulate(prog, accepted, runs=4, seed=1, low_factor=1, high_factor=1)
+    assert quiet.scheduled_runs == 4
+    assert stretched.scheduled_runs == 0
+
+
 def test_grouped_drivers_occur_together() -> None:
     from synaps_programplan.model import RiskDriver
     from synaps_programplan.montecarlo import _occurrence_draws

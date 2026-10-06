@@ -73,10 +73,10 @@ def analyze_program(payload: dict[str, Any]) -> dict[str, object]:
 
 @app.post("/solve")
 def solve_program(body: SolveRequest) -> dict[str, Any]:
-    if body.solver not in {"cpsat", "greedy", "alns", "rhc"}:
-        raise HTTPException(status_code=422, detail="solver must be cpsat, greedy, alns or rhc")
+    if body.solver not in {"cpsat", "greedy"}:
+        raise HTTPException(status_code=422, detail="solver must be cpsat or greedy")
     program = _program(body.program)
-    solver_name: Literal["cpsat", "greedy", "alns", "rhc"] = body.solver  # type: ignore[assignment]
+    solver_name: Literal["cpsat", "greedy"] = "greedy" if body.solver == "greedy" else "cpsat"
     result = plan(program, SolveConfig(solver=solver_name, time_limit_s=body.time_limit_s, seed=body.seed))
     payload = result.model_dump(mode="json")
     if not result.outcome.ok:

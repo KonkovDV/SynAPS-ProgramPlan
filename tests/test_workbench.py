@@ -262,6 +262,14 @@ def test_workbench_refuses_a_journal_whose_witness_disagrees(tmp_path: Path) -> 
         Workbench(program=prog, plans=[accepted], journal=path)
 
 
+def test_a_wrong_length_proxy_secret_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SYNAPS_PROGRAMPLAN_PROXY_SECRET", "s3cret")
+    from synaps_programplan.auth import proxy_principal
+
+    assert proxy_principal("nope", "ivanov", "planner") is None
+    assert proxy_principal("s3cret-but-longer", "ivanov", "planner") is None
+
+
 def test_non_loopback_bind_requires_roles_and_tls() -> None:
     from synaps_programplan.workbench import exposure_refusal
 

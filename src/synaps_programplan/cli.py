@@ -54,7 +54,7 @@ def _config(args: argparse.Namespace) -> SolveConfig:
 
 
 def _solve_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--solver", choices=["cpsat", "greedy", "alns", "rhc"], default="cpsat")
+    parser.add_argument("--solver", choices=["cpsat", "greedy"], default="cpsat")
     parser.add_argument("--time-limit", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--objective", choices=["finish", "due", "stability"], default="finish")

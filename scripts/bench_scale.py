@@ -50,6 +50,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         program = generate(spec)
         for solver in args.solvers.split(","):
+            if solver not in {"cpsat", "greedy"}:
+                raise SystemExit(f"unknown solver {solver}: ALNS and RHC do not encode generalized links")
             name: Literal["cpsat", "greedy"] = "greedy" if solver == "greedy" else "cpsat"
             config = SolveConfig(solver=name, time_limit_s=args.time_limit, seed=args.seed)
             started = time.perf_counter()
@@ -68,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
                 "late_milestones": kpi.late_count if kpi else None,
                 "tardiness_wd": kpi.tardiness_wd if kpi else None,
                 "seconds": round(elapsed, 1),
-                "time_limit_s": args.time_limit if name == "cpsat" else None,
+                "time_limit_s": None if name == "greedy" else args.time_limit,
             }
             rows.append(row)
             sys.stderr.write(json.dumps(row, ensure_ascii=False) + "\n")
