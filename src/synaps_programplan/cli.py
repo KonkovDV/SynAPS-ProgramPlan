@@ -36,7 +36,7 @@ from synaps_programplan.planner import SolveConfig, plan
 from synaps_programplan.publish import attestation_error, require_attestation
 from synaps_programplan.report import build_report
 from synaps_programplan.result import PlanResult, Severity
-from synaps_programplan.scenarios import WhatIf, compare, run_scenarios
+from synaps_programplan.scenarios import WhatIf, compare, program_for_plan, run_scenarios
 from synaps_programplan.synthetic import SyntheticSpec, generate
 from synaps_programplan.versions import CLAIM_LEVEL, ISO16290_TRL, NAME, SYNAPS_COMMIT, VERSION
 
@@ -265,12 +265,13 @@ def cmd_replan(args: argparse.Namespace) -> int:
 def cmd_explain(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     result = load_plan(args.plan)
-    rejected = attestation_error(program, result)
+    solved = program_for_plan(program, result)
+    rejected = attestation_error(solved, result)
     if rejected:
         _print({"error": rejected})
         return 1
-    result.explanations = explain(program, result, limit=args.limit)
-    attach_counterfactuals(program, result, top=args.counterfactuals)
+    result.explanations = explain(solved, result, limit=args.limit)
+    attach_counterfactuals(solved, result, top=args.counterfactuals)
     if args.out:
         save_plan(result, args.out)
     _print([e.model_dump(mode="json") for e in result.explanations])
@@ -337,7 +338,7 @@ def cmd_scenarios(args: argparse.Namespace) -> int:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     for result in scenario_set.plans:
         if result.outcome.ok and args.explain:
-            result.explanations = explain(program, result)
+            result.explanations = explain(program_for_plan(program, result), result)
         save_plan(result, args.out_dir / f"plan_{result.scenario_id}.json")
     _print(compare(scenario_set.plans))
     return 0 if any(p.outcome.ok for p in scenario_set.plans) else 1
@@ -504,12 +505,13 @@ def cmd_demo(args: argparse.Namespace) -> int:
     scenario_set = run_scenarios(program, config, what_ifs=what_ifs)
     for result in scenario_set.plans:
         if result.outcome.ok:
-            result.explanations = explain(program, result)
+            result.explanations = explain(program_for_plan(program, result), result)
         save_plan(result, out / f"plan_{result.scenario_id}.json")
     base = scenario_set.plans[0]
     if base.outcome.ok:
         attach_counterfactuals(program, base, top=args.counterfactuals, config=config)
         save_plan(base, out / f"plan_{base.scenario_id}.json")
+        write_plan_mspdi(program, base, out / "plan.xml")
     tight = generate(SyntheticSpec(projects=args.projects, seed=args.seed, infeasible=True))
     witness = infeasibility_witness(tight, time_limit_s=max(4, args.time_limit // 2))
     (out / "witness_infeasible.json").write_text(json.dumps(witness, ensure_ascii=False, indent=1), "utf-8")
@@ -555,6 +557,17 @@ def cmd_journal(args: argparse.Namespace) -> int:
         }
     )
     return 0 if check.ok else 1
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    from synaps_programplan.stand import demo_checks, environment_checks, stand_ok
+
+    checks = environment_checks()
+    if args.demo is not None:
+        checks += demo_checks(args.demo)
+    ready = stand_ok(checks)
+    _print({"ready": ready, "checks": [item.as_dict() for item in checks]})
+    return 0 if ready else 1
 
 
 def cmd_version(_: argparse.Namespace) -> int:
@@ -745,6 +758,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--key", help="ключ подписи; иначе переменная SYNAPS_PROGRAMPLAN_JOURNAL_KEY")
     p.add_argument("--seal", action="store_true", help="записать печать головной записи, если её ещё нет")
     p.set_defaults(func=cmd_journal)
+
+    p = sub.add_parser("doctor", help="проверка стенда: сборка, языковая модель, файлы показа")
+    p.add_argument("--demo", type=Path, help="каталог показа, например out/demo")
+    p.set_defaults(func=cmd_doctor)
 
     p = sub.add_parser("version")
     p.set_defaults(func=cmd_version)

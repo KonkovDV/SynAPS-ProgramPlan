@@ -79,6 +79,24 @@ class Adjustments:
     ignore_due_projects: frozenset[str] = frozenset()
 
 
+def adjustments_of(result: PlanResult) -> Adjustments:
+    """Levers stored with the plan. Empty when the plan was solved on the bare program."""
+    config = result.evidence.get("config")
+    raw = config.get("adjustments") if isinstance(config, dict) else None
+    if not isinstance(raw, dict):
+        return Adjustments()
+    due = raw.get("due_override")
+    return Adjustments(
+        extra_lo={str(key): int(value) for key, value in dict(raw.get("extra_lo") or {}).items()},
+        extra_hi={str(key): int(value) for key, value in dict(raw.get("extra_hi") or {}).items()},
+        capacity_scale={
+            str(key): float(value) for key, value in dict(raw.get("capacity_scale") or {}).items()
+        },
+        due_override={str(key): int(value) for key, value in due.items()} if isinstance(due, dict) else None,
+        ignore_due_projects=frozenset(str(item) for item in (raw.get("ignore_due_projects") or [])),
+    )
+
+
 @dataclass
 class SolveRun:
     compiled: Compiled

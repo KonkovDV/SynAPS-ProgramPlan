@@ -88,9 +88,7 @@ def test_export_roundtrip_keeps_dates_links_deadline_and_resource(tmp_path: Path
 def test_export_writes_baseline_zero(tmp_path: Path) -> None:
     from tests.conftest import program, task
 
-    prog = program(
-        [task("a", 3, planned_start=date(2026, 10, 5), planned_finish=date(2026, 10, 7))]
-    )
+    prog = program([task("a", 3, planned_start=date(2026, 10, 5), planned_finish=date(2026, 10, 7))])
     result = plan(prog, SolveConfig(time_limit_s=10))
     assert result.outcome.ok and result.task("a").reference_start is not None
     out = tmp_path / "plan.xml"

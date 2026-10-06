@@ -4,7 +4,9 @@ The wheel directory is not committed. Copy it into the closed network and
 install with::
 
     pip install --no-index --find-links wheelhouse -r requirements-hashed.txt
+    pip install --no-index --no-deps wheelhouse/synaps_programplan-<version>-py3-none-any.whl
 
+The product wheel changes with every commit, so it stays out of the hashed file.
 SynAPS is built from the pinned checkout when ``SYNAPS_SOURCE`` points at it.
 """
 
@@ -40,9 +42,14 @@ def main() -> int:
             subprocess.check_call(
                 [sys.executable, "-m", "pip", "wheel", source, "-w", str(WHEELHOUSE), "--no-deps"],
             )
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "wheel", str(ROOT), "-w", str(WHEELHOUSE), "--no-deps"],
+    )
     grouped: dict[str, list[str]] = {}
     for path in sorted(WHEELHOUSE.glob("*")):
         if path.suffix not in {".whl", ".tar.gz", ".zip"} and not path.name.endswith(".tar.gz"):
+            continue
+        if path.name.startswith("synaps_programplan-"):
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         grouped.setdefault(_requirement_name(path.name), []).append(digest)

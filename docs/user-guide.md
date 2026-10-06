@@ -19,7 +19,10 @@ SynAPS-ProgramPlan version
 
 ```text
 SynAPS-ProgramPlan demo --projects 4 --time-limit 8 --risk-runs 40 --out-dir out/demo
+SynAPS-ProgramPlan doctor --demo out/demo
 ```
+
+`doctor` ничего не считает и в сеть не ходит. Он проверяет Python, ядро SynAPS, OR-Tools, обязательные библиотеки и то, что языковая модель не настроена. С `--demo` он сверяет каждый план в каталоге с программой по хешам и проверяет, что отчёт собран из этих планов. Код 0 — можно показывать, код 1 — в списке `checks` есть строка с `"ok": false`. Установка на машину заказчика — в [инструкции для стенда](acceptance/demo-stand.md).
 
 ## 2. Подготовка данных
 

@@ -10,7 +10,7 @@ A consolidated schedule for a programme of development projects. Several project
 
 ## What it is for
 
-When a programme is kept as a set of separate project plans, the consolidated schedule is assembled by hand. That takes days, and a clash over a shared stand usually appears only after the plans have been merged. Showing that a mandated deadline cannot be met, and naming the requirement that has to give, is hardly possible in that process. After any edit it is unclear why everything else moved.
+When a programme is kept as a set of separate project plans, the consolidated schedule is assembled by hand. That takes days, and a clash over a shared stand usually appears only after the plans have been merged. Showing that a mandated deadline cannot be met, and naming the requirements that conflict, is hardly possible in that process. After any edit it is unclear why everything else moved.
 
 SynAPS-ProgramPlan does this work:
 
@@ -39,7 +39,7 @@ The scheduler has been measured on the public sets used by research groups and s
 | RCPSP/max j10, j20, j30 | 810 | Start-to-start links, minimum and maximum lags. Every instance known to be infeasible is proved infeasible. Known optima match on every instance except one |
 | Study programmes | 3 sizes | Up to 64 projects and 2,688 activities. A plan is accepted at every size. CP-SAT cuts the greedy plan's total tardiness by 54%, 45% and 28% |
 
-Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 159.
+Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 166.
 
 ## What the programme manager gets
 
@@ -85,10 +85,11 @@ Python 3.12 or newer.
 ```text
 pip install "SynAPS-ProgramPlan[api] @ git+https://github.com/KonkovDV/SynAPS-ProgramPlan.git"
 SynAPS-ProgramPlan demo --projects 4 --time-limit 8 --risk-runs 40 --out-dir out/demo
+SynAPS-ProgramPlan doctor --demo out/demo
 SynAPS-ProgramPlan serve out/demo/program.json out/demo/plan_A.json out/demo/plan_D.json --journal out/demo/decisions.jsonl --risk-runs 40
 ```
 
-`demo` spends about a minute building the demonstration in the next section. `serve` opens the planner's desk at `http://127.0.0.1:8765/`. It is the same report, and from it you edit the plan, reschedule, record a decision and keep the journal.
+`demo` spends about a minute building the demonstration in the next section. `doctor` computes nothing: it checks the install and matches every built plan against the programme by hash. Exit code 0 means the machine is ready. `serve` opens the planner's desk at `http://127.0.0.1:8765/`. It is the same report, and from it you edit the plan, reschedule, record a decision and keep the journal.
 
 ## Demonstration
 
@@ -100,7 +101,7 @@ The command above writes `out/demo` (the directory is not in git):
 - `report_infeasible.html` — a programme whose deadline cannot be met, with no consolidated-plan dates;
 - `program.json`, `plan_*.json`, `plan.xml`, `risk_A.json` — the programme, the plans with their hashes, the MS Project export and the risk estimate.
 
-Open both HTML files before the meeting. The order of the screens and the MS Project round trip are in the [demonstration script](docs/acceptance/demo-script.md) (Russian). Running the command again with a different time limit produces a different plan: keep the files built by this command.
+Open both HTML files before the meeting. The order of the screens and the MS Project round trip are in the [demonstration script](docs/acceptance/demo-script.md) (Russian). Installing on the customer's machine, offline included, checking it, and what to do if something fails are in the [stand guide](docs/acceptance/demo-stand.md) (Russian). Running the command again with a different time limit, or on a machine of different speed, may produce a different plan: keep the files built by this command.
 
 On this build the Deadlines alternative is accepted as `FEASIBLE`: programme finish 23 August 2028, milestone tardiness 139 working days against the planned dates, 71 tasks moved. Eight seconds were not enough to prove nothing shorter exists. `OPTIMAL` on other rows is optimality for that alternative's own objective. A peak of 100% means the busiest resource is fully used on some day; a plan that exceeds capacity is not shown.
 
@@ -163,6 +164,7 @@ The guides below are in Russian.
 | [Pilot](docs/pilot-and-roadmap.md) | The customer, request no. 1, the pilot stages, acceptance criteria |
 | [Administrator's guide](docs/admin-guide.md) | Offline install, TLS, sign-in through a corporate proxy, the journal |
 | [Acceptance](docs/acceptance/pmi.md) | Test procedure, specification, protocol template, demonstration script |
+| [Demonstration stand](docs/acceptance/demo-stand.md) | Installing on the customer's machine, the `doctor` check, what to do if something fails |
 | [Glossary](docs/glossary.md) | Planning terms |
 | [Claims](CLAIMS_REGISTRY.md) · [Conditions of use](LIMITS.md) | The figures that may be cited, and the conditions under which they were measured |
 
@@ -175,6 +177,7 @@ pip install -e ".[dev,api]"
 python -m pytest tests -q
 python scripts/lint_claims.py
 ruff check src tests scripts
+ruff format --check src tests scripts
 mypy src
 ```
 

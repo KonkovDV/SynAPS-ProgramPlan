@@ -105,6 +105,31 @@ def _smallest_shift(
     return None
 
 
+def program_for_plan(program: OKRProgram, result: PlanResult) -> OKRProgram:
+    """Program this plan was solved on.
+
+    What-if plans store the change in ``metadata['what_if']`` and were solved
+    on that changed program. The argument must be the base program: applying
+    the change twice will not match the plan hash, and the caller should refuse.
+    """
+    raw = result.metadata.get("what_if")
+    if not isinstance(raw, dict):
+        return program
+    added = raw.get("add_capacity") or {}
+    moved = raw.get("move_deadline") or {}
+    delayed = raw.get("delay_task_wd") or {}
+    return apply_what_if(
+        program,
+        WhatIf(
+            label=str(raw.get("label") or "Что если"),
+            add_capacity={str(key): int(value) for key, value in added.items()},
+            move_deadline={str(key): date.fromisoformat(str(value)) for key, value in moved.items()},
+            drop_projects=[str(item) for item in raw.get("drop_projects") or []],
+            delay_task_wd={str(key): int(value) for key, value in delayed.items()},
+        ),
+    )
+
+
 def apply_what_if(program: OKRProgram, what_if: WhatIf) -> OKRProgram:
     data = program.model_dump()
     dropped = set(what_if.drop_projects)

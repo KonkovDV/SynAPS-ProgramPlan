@@ -21,8 +21,9 @@ from datetime import date
 from typing import Any
 
 from synaps_programplan.compiler import Compiled, anchor_is_end_dst, anchor_is_end_src, compile_program
+from synaps_programplan.evidence import fingerprint
 from synaps_programplan.model import OKRProgram, TaskStatus
-from synaps_programplan.planner import Adjustments, SolveConfig, plan
+from synaps_programplan.planner import Adjustments, SolveConfig, adjustments_of, plan
 from synaps_programplan.result import Claim, Explanation, PlanResult, TaskPlan
 
 _WINDOW_TEXT = {
@@ -61,7 +62,8 @@ def explain(
     """Explanations for every moved task and every late milestone of an accepted plan."""
     if not result.outcome.ok:
         return []
-    adjustments = adjustments or Adjustments()
+    if adjustments is None:
+        adjustments = adjustments_of(result)
     ctx = _context(program, result, adjustments)
     late = {m.task_id for m in (result.kpi.milestones if result.kpi else []) if m.lateness_wd > 0}
     targets = [
@@ -102,6 +104,9 @@ def explanation_gaps(program: OKRProgram, result: PlanResult) -> list[str]:
     """Stored explanations must equal a fresh reading of the same accepted plan."""
     if not result.outcome.ok:
         return []
+    stamped = result.evidence.get("input_hash")
+    if stamped is not None and stamped != fingerprint(program):
+        return ["хеш программы в плане не совпадает с программой, по которой читается причина"]
     fresh = {item.task_id: item for item in explain(program, result)}
     gaps: list[str] = []
     for item in result.explanations:
@@ -127,6 +132,8 @@ def _context(program: OKRProgram, result: PlanResult, adjustments: Adjustments) 
         extra_lo=adjustments.extra_lo,
         extra_hi=adjustments.extra_hi,
         capacity_scale=adjustments.capacity_scale,
+        due_override=adjustments.due_override,
+        ignore_due_projects=adjustments.ignore_due_projects,
     )
     horizon = len(compiled.axis)
     rows = {row.task_id: row for row in result.tasks}
@@ -227,36 +234,48 @@ def _project_code(ctx: _Ctx, project_id: str) -> str:
 def _resource_cause(ctx: _Ctx, row: TaskPlan) -> tuple[str, list[str], str]:
     task = ctx.program.task(row.task_id)
     probe = row.start_index - 1
+    last = min(probe + row.duration_wd, len(ctx.compiled.axis))
+    reserve: tuple[str, list[str], str] | None = None
     for demand in task.demands:
         rid = demand.resource_id or row.bound.get(demand.skill_id or "")
-        if rid is None:
+        if rid is None or rid not in ctx.avail:
             continue
-        for day in range(probe, min(probe + row.duration_wd, len(ctx.compiled.axis))):
+        for day in range(max(probe, 0), last):
             own = demand.units if row.start_index <= day < row.end_index else 0
             if ctx.load[rid][day] - own + demand.units <= ctx.avail[rid][day]:
                 continue
-            resource = next(r for r in ctx.program.resources if r.id == rid)
+            resource = next(item for item in ctx.program.resources if item.id == rid)
             occupants = [
-                u.task_id
-                for u in ctx.users[rid]
-                if u.task_id != row.task_id and u.start_index <= day < u.end_index
+                other.task_id
+                for other in ctx.users[rid]
+                if other.task_id != row.task_id and other.start_index <= day < other.end_index
             ]
             when = f"{ctx.compiled.axis.days[day]:%d.%m.%Y}"
+            raw = ctx.compiled.availability[rid][day]
+            if not occupants and raw > 0:
+                if reserve is None:
+                    reserve = (
+                        "CAPACITY_RESERVE",
+                        [rid],
+                        f"{resource.code}: резерв варианта оставил {ctx.avail[rid][day]} из {raw} ед., "
+                        f"задаче нужно {demand.units} ({when})",
+                    )
+                continue
             if not occupants:
                 return (
                     "CALENDAR_CLOSURE",
                     [rid],
                     f"{resource.code} недоступен {when} (отпуск/ТО/календарь ресурса)",
                 )
-            others = sorted({ctx.projects[t] for t in occupants} - {row.project_id})
-            names = ", ".join(f"«{ctx.names[t]}»" for t in occupants[:3])
+            others = sorted({ctx.projects[item] for item in occupants} - {row.project_id})
+            names = ", ".join(f"«{ctx.names[item]}»" for item in occupants[:3])
             foreign = ", ".join(_project_code(ctx, item) for item in others)
             return (
                 "RESOURCE_CONTENTION" if others else "RESOURCE_BUSY",
                 [rid, *occupants],
                 f"{resource.code} занят {when}: {names}" + (f" ({foreign})" if foreign else ""),
             )
-    return ("OPTIMIZER_CHOICE", [], "положение выбрано оптимизатором (ограничение не активно)")
+    return reserve or ("OPTIMIZER_CHOICE", [], "положение выбрано оптимизатором (ограничение не активно)")
 
 
 def _chain(ctx: _Ctx, task_id: str, depth: int = 40) -> list[str]:
