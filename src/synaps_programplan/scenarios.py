@@ -325,7 +325,7 @@ def compare(plans: list[PlanResult]) -> list[dict[str, object]]:
             "claim": result.outcome.claim.value,
             "duplicate_of": result.metadata.get("duplicate_of"),
         }
-        if kpi is not None:
+        if kpi is not None and result.outcome.ok:
             peak = max((r.peak_pct for r in kpi.resources), default=0.0)
             row.update(
                 {

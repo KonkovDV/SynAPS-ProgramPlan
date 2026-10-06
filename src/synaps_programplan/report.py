@@ -19,6 +19,7 @@ from synaps_programplan.conflicts import Analysis
 from synaps_programplan.model import OKRProgram, TaskStatus
 from synaps_programplan.montecarlo import RiskResult
 from synaps_programplan.planner import resource_profiles
+from synaps_programplan.publish import attestation_error
 from synaps_programplan.result import PlanResult
 from synaps_programplan.scenarios import compare
 from synaps_programplan.versions import CLAIM_LEVEL, ISO16290_TRL, NAME, SYNAPS_COMMIT, VERSION
@@ -57,7 +58,9 @@ def report_data(
             "detail": result.outcome.detail,
             "evidence": result.evidence,
         }
-        if result.outcome.ok:
+        publishable = attestation_error(program, result) is None
+        entry["ok"] = publishable
+        if publishable:
             explanations = {e.task_id: e.model_dump(mode="json") for e in result.explanations}
             entry["tasks"] = [
                 {

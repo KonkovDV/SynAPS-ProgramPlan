@@ -20,6 +20,7 @@ from synaps_programplan.edits import check_moves
 from synaps_programplan.model import OKRProgram
 from synaps_programplan.montecarlo import simulate
 from synaps_programplan.planner import SolveConfig, plan
+from synaps_programplan.publish import attestation_error, require_attestation
 from synaps_programplan.quality import quality_report
 from synaps_programplan.result import PlanResult, Severity
 from synaps_programplan.versions import CLAIM_LEVEL, ISO16290_TRL, NAME, SYNAPS_COMMIT, VERSION
@@ -101,6 +102,17 @@ def check(body: CheckRequest) -> dict[str, Any]:
     program = _program(body.program)
     try:
         accepted = PlanResult.model_validate(body.plan)
+        rejected = attestation_error(program, accepted)
+        if rejected:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "ok": False,
+                    "accepted": False,
+                    "claim": accepted.outcome.claim.value,
+                    "detail": rejected,
+                },
+            )
         if body.moves:
             payload = check_moves(program, accepted, body.moves)
         else:
@@ -123,6 +135,7 @@ def risk(body: RiskRequest) -> dict[str, object]:
     program = _program(body.program)
     try:
         accepted = PlanResult.model_validate(body.plan)
+        require_attestation(program, accepted)
         report = simulate(program, accepted, runs=body.runs, seed=body.seed)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

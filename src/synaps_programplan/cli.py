@@ -32,6 +32,7 @@ from synaps_programplan.merge import merge_projects, read_links_csv
 from synaps_programplan.model import OKRProgram, Provenance, ProvenanceKind
 from synaps_programplan.montecarlo import RiskResult, simulate
 from synaps_programplan.planner import SolveConfig, plan
+from synaps_programplan.publish import attestation_error, require_attestation
 from synaps_programplan.report import build_report
 from synaps_programplan.result import PlanResult, Severity
 from synaps_programplan.scenarios import WhatIf, compare, run_scenarios
@@ -203,6 +204,10 @@ def _moves(path: Path) -> dict[str, date]:
 def cmd_check(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     result = load_plan(args.plan)
+    rejected = attestation_error(program, result)
+    if rejected:
+        _print({"accepted": False, "claim": result.outcome.claim.value, "error": rejected})
+        return 1
     if args.moves:
         checked = check_moves(program, result, _moves(args.moves))
         _print(
@@ -233,16 +238,20 @@ def cmd_replan(args: argparse.Namespace) -> int:
         label=f"{args.scenario_id} · правка {base.scenario_id}: закреплено {len(moves)}",
         mode=args.mode,
     )
+    if attestation_error(program, result):
+        _print(_summary(result))
+        return 1
     save_plan(result, args.out)
     _print(_summary(result))
-    return 0 if result.outcome.ok else 1
+    return 0
 
 
 def cmd_explain(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     result = load_plan(args.plan)
-    if not result.outcome.ok:
-        _print({"error": "plan is not accepted (outcome.ok = false); nothing to explain"})
+    rejected = attestation_error(program, result)
+    if rejected:
+        _print({"error": rejected})
         return 1
     result.explanations = explain(program, result, limit=args.limit)
     attach_counterfactuals(program, result, top=args.counterfactuals)
@@ -305,7 +314,11 @@ def _risk_for(
 ) -> RiskResult | None:
     if runs <= 0:
         return None
-    accepted = [p for p in plans if p.outcome.ok and (scenario is None or p.scenario_id == scenario)]
+    accepted = [
+        p
+        for p in plans
+        if attestation_error(program, p) is None and (scenario is None or p.scenario_id == scenario)
+    ]
     if not accepted:
         if scenario is not None:
             raise ValueError(f"scenario {scenario!r} has no accepted plan for the risk section")
@@ -373,8 +386,9 @@ def cmd_serve(args: argparse.Namespace) -> int:
 def cmd_export(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     result = load_plan(args.plan)
-    if not result.outcome.ok:
-        _print({"error": "plan is not accepted (outcome.ok = false); nothing to export"})
+    rejected = attestation_error(program, result)
+    if rejected:
+        _print({"error": rejected})
         return 1
     write_plan_mspdi(program, result, args.out)
     _print({"out": str(args.out), "tasks": len(result.tasks), "plan_hash": result.evidence.get("plan_hash")})
@@ -413,7 +427,9 @@ def _unavailable(text: str) -> tuple[str, date, date]:
 
 def cmd_risk(args: argparse.Namespace) -> int:
     program = load_program(args.program)
-    report = simulate(program, load_plan(args.plan), runs=args.runs, seed=args.seed)
+    accepted = load_plan(args.plan)
+    require_attestation(program, accepted)
+    report = simulate(program, accepted, runs=args.runs, seed=args.seed)
     payload = report.as_dict()
     if args.out:
         args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
