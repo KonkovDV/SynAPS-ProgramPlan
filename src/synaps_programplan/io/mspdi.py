@@ -495,6 +495,11 @@ def write_plan_mspdi(
                     row.is_milestone,
                 )
                 elements[row.task_id] = element
+                if row.reference_start is not None and row.reference_finish is not None:
+                    baseline = ET.SubElement(element, _q("Baseline"))
+                    ET.SubElement(baseline, _q("Number")).text = "0"
+                    ET.SubElement(baseline, _q("Start")).text = f"{row.reference_start}T09:00:00"
+                    ET.SubElement(baseline, _q("Finish")).text = f"{row.reference_finish}T18:00:00"
                 source = program.task(row.task_id)
                 if source.hard_finish is not None:
                     ET.SubElement(element, _q("Deadline")).text = f"{source.hard_finish}T18:00:00"

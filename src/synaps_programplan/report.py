@@ -39,6 +39,7 @@ def report_data(
             "id": p.id,
             "code": p.code,
             "name": p.name,
+            "enterprise": p.enterprise,
             "deadline": p.deadline.isoformat() if p.deadline else None,
         }
         for p in program.projects
@@ -66,6 +67,7 @@ def report_data(
                 {
                     "id": row.task_id,
                     "project": row.project_id,
+                    "wbs": tasks[row.task_id].wbs_id,
                     "name": row.name,
                     "start": row.start.isoformat(),
                     "finish": row.finish.isoformat(),
@@ -120,6 +122,10 @@ def report_data(
         "axis": axis_days,
         "availability": {rid: values for rid, values in compiled.availability.items()},
         "projects": projects,
+        "wbs": [
+            {"id": node.id, "project": node.project_id, "code": node.code, "name": node.name}
+            for node in program.wbs
+        ],
         "resources": resources,
         "edges": edges,
         "scenarios": scenarios,
@@ -165,8 +171,24 @@ def _iso(value: date | None) -> str | None:
     return value.isoformat() if value else None
 
 
+def _json_for_script(data: dict[str, Any]) -> str:
+    """JSON that cannot close the surrounding script block.
+
+    The replacement is case-blind: every ``<``, ``>`` and ``&`` becomes a
+    Unicode escape, as do the line separators U+2028 and U+2029.
+    """
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return (
+        payload.replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
+
+
 def render_html(data: dict[str, Any], title: str | None = None) -> str:
-    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    payload = _json_for_script(data)
     heading = html.escape(title or f"Сводный план программы ОКР — {data['program']['name']}")
     template = resources.files("synaps_programplan").joinpath("report_template.html").read_text("utf-8")
     return template.replace("__TITLE__", heading).replace("__DATA__", payload)

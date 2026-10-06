@@ -46,6 +46,8 @@ th{background:#fafbfc;font-weight:600;cursor:pointer;position:sticky;top:0}
 <div class="bar">
 <label>Масштаб <select id="zoom"><option value="fit" selected>вся программа</option><option value="4">недели</option><option value="1.5">месяцы</option><option value="0.5">кварталы</option></select></label>
 <label>ОКР <select id="proj"><option value="">все</option></select></label>
+<label>Предприятие <select id="plant"><option value="">все</option></select></label>
+<label>Ресурс <select id="resf"><option value="">все</option></select></label>
 <label><input type="checkbox" id="onlyCrit"> только критические</label>
 <label><input type="checkbox" id="onlyMoved"> только сдвинутые</label>
 <label><input type="checkbox" id="showBase" checked> исходный план</label>
@@ -118,6 +120,9 @@ function boot(data,pick){D=data;
  $("scenario").innerHTML=D.scenarios.map(s=>`<option value="${esc(s.id)}" ${s.ok?"":"disabled"}>${esc(s.label)}${s.ok?"":" — "+s.claim}</option>`).join("");
  if(okScen.length)$("scenario").value=pick&&okScen.some(s=>s.id===pick)?pick:okScen[0].id;
  $("proj").innerHTML=`<option value="">все</option>`+D.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.code)} — ${esc(p.name)}</option>`).join("");
+ const plants=[...new Set(D.projects.map(p=>p.enterprise).filter(Boolean))];
+ $("plant").innerHTML=`<option value="">все</option>`+plants.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("");
+ $("resf").innerHTML=`<option value="">все</option>`+D.resources.map(r=>`<option value="${esc(r.id)}">${esc(r.code)} — ${esc(r.name)}</option>`).join("");
  $("res").innerHTML=D.resources.map(r=>`<option value="${esc(r.id)}">${esc(r.code)} — ${esc(r.name)}</option>`).join("");
  $("decCard").hidden=!WB();$("editRepair").hidden=$("editMode2").hidden=!may("repair");
  $("decAccept").disabled=$("decReject").disabled=!may("decide");
@@ -191,20 +196,25 @@ function localCheck(){const s=cur(),ts=patched(s),by=Object.fromEntries(ts.map(t
  const hard=out.filter(v=>v.severity==="hard").length;
  $("editResult").innerHTML=`<div class="${hard?"errbox":"warnbox"}"><span class="badge PRELIM">предварительно</span> <span class="small">Проверка в браузере: связи, директивные сроки, загрузка именованных ресурсов — ${hard?"жёстких нарушений: "+hard:"нарушений не найдено"}. Окончательный вердикт даёт независимая проверка: <code>SynAPS-ProgramPlan check program.json plan.json --moves правки.json</code> или рабочее место (<code>serve</code>).</span>${violList(out)}</div>`}
 function gantt(){const s=cur(),box=$("gantt");if(!s){box.innerHTML="";return}
- const proj=$("proj").value,oc=$("onlyCrit").checked,om=$("onlyMoved").checked,base=$("showBase").checked,q=$("q").value.toLowerCase(),ed=$("editMode").checked;
+ const proj=$("proj").value,plant=$("plant").value,resf=$("resf").value,oc=$("onlyCrit").checked,om=$("onlyMoved").checked,base=$("showBase").checked,q=$("q").value.toLowerCase(),ed=$("editMode").checked;
  box.classList.toggle("editing",ed);
  const view=patched(s);
- let tasks=view.filter(t=>(!proj||t.project===proj)&&(!oc||t.critical)&&(!om||t.shift||t.edited)&&(!q||t.name.toLowerCase().includes(q)||t.id.toLowerCase().includes(q)));
+ const p80late={};(D.risk&&D.risk.milestone_risk||[]).forEach(m=>{if(m.task_id&&m.p80&&m.target)p80late[m.task_id]=m.p80>m.target});
+ let tasks=view.filter(t=>{if(proj&&t.project!==proj)return false;if(plant){const owner=D.projects.find(p=>p.id===t.project);if(!owner||owner.enterprise!==plant)return false}if(resf&&!t.demands.some(d=>d.resource===resf))return false;if(oc&&!t.critical)return false;if(om&&!(t.shift||t.edited))return false;if(q&&!t.name.toLowerCase().includes(q)&&!t.id.toLowerCase().includes(q))return false;return true});
  const all=view.flatMap(t=>[t.start,t.finish,t.ref_start,t.ref_finish,t.deadline].filter(Boolean)).map(toD);
  const t0=new Date(Math.min(...all,toD(D.program.status_date))-14*DAY),t1=new Date(Math.max(...all)+30*DAY);
  const LW=300,RH=20,HH=34,z=$("zoom").value,pxd=z==="fit"?Math.max(0.2,(box.clientWidth-LW-24)/((t1-t0)/DAY)):+z;G.pxd=pxd;
  const X=d=>Math.round((toD(d)-t0)/DAY*pxd),mstep=Math.max(1,Math.ceil(42/(30.4*pxd)));
- const rows=[];D.projects.forEach(p=>{const ts=tasks.filter(t=>t.project===p.id);if(!ts.length)return;rows.push({hdr:p,ts});ts.sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0).forEach(t=>rows.push({t}))});
- const W=LW+Math.round((t1-t0)/DAY*pxd),H=HH+rows.length*RH+10;const pos={};let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Диаграмма Ганта">`;
+ const closed=G.closed||(G.closed={});
+ const rows=[];D.projects.forEach(p=>{const ts=tasks.filter(t=>t.project===p.id);if(!ts.length)return;rows.push({hdr:p,fold:"p:"+p.id});if(closed["p:"+p.id])return;const byStage={};ts.forEach(t=>{(byStage[t.wbs||""] ||= []).push(t)});Object.keys(byStage).forEach(wid=>{const members=byStage[wid].sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0);const node=(D.wbs||[]).find(n=>n.id===wid);if(node){rows.push({hdr:{code:node.code,name:node.name},fold:"w:"+wid,stage:true});if(closed["w:"+wid])return}members.forEach(t=>rows.push({t}))})});
+ const W=LW+Math.round((t1-t0)/DAY*pxd),H=HH+rows.length*RH+10;const pos={};
+ const first=Math.max(0,Math.floor(box.scrollTop/RH)-8),last=Math.min(rows.length,first+Math.ceil((box.clientHeight||640)/RH)+16);
+ const visible=rows.map((row,i)=>({row,i})).slice(first,last);
+ let svg=`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Диаграмма Ганта">`;
  for(let d=new Date(Date.UTC(t0.getUTCFullYear(),t0.getUTCMonth(),1));d<t1;d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1))){const x=LW+Math.round((d-t0)/DAY*pxd);if(x<LW)continue;
   svg+=`<line x1="${x}" y1="${HH-14}" x2="${x}" y2="${H}" stroke="#eef0f3"/>`;const m=d.getUTCMonth();if((d.getUTCFullYear()*12+m)%mstep===0)svg+=`<text x="${x+3}" y="${HH-18}">${String(m+1).padStart(2,"0")}.${String(d.getUTCFullYear()).slice(2)}</text>`}
  const sx=LW+X(D.program.status_date);svg+=`<line x1="${sx}" y1="${HH-14}" x2="${sx}" y2="${H}" stroke="#3b7dd8" stroke-dasharray="4 3"/><text x="${sx+3}" y="${HH-4}" style="fill:#3b7dd8">статус</text>`;
- rows.forEach((r,i)=>{const y=HH+i*RH;if(r.hdr){svg+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="#f2f4f7"/><text x="6" y="${y+14}" style="font-weight:700">${esc(r.hdr.code)} — ${esc(r.hdr.name)}</text>`;
+ visible.forEach(({row:r,i})=>{const y=HH+i*RH;if(r.hdr){const mark=closed[r.fold]?"▸":"▾";svg+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="${r.stage?"#f7f8fa":"#f2f4f7"}"/><text x="${r.stage?16:6}" y="${y+14}" data-fold="${esc(r.fold)}" style="font-weight:700;cursor:pointer">${mark} ${esc(r.hdr.code)} — ${esc(r.hdr.name)}</text>`;
    if(r.hdr.deadline){const x=LW+X(r.hdr.deadline);svg+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${H}" stroke="var(--crit)" stroke-width="1" stroke-dasharray="2 3" opacity=".6"/>`}return}
   const t=r.t,c=t.critical?"var(--crit)":projColor[t.project],lbl=t.name.length>44?t.name.slice(0,43)+"…":t.name;
   svg+=`<text x="14" y="${y+14}" data-id="${esc(t.id)}"${t.edited?" style='font-weight:700'":""}>${t.edited?"✎ ":""}${esc(lbl)}</text>`;
@@ -215,12 +225,14 @@ function gantt(){const s=cur(),box=$("gantt");if(!s){box.innerHTML="";return}
   const attrs=`data-id="${esc(t.id)}"${mv?` data-move="1" tabindex="0" role="button" aria-label="${esc(t.name)}: ${t.milestone?fmt(t.finish):fmt(t.start)+" — "+fmt(t.finish)}"`:""}${stroke}`;
   if(t.milestone)svg+=`<path d="M${a} ${y+2}l6 7-6 7-6-7z" fill="${c}" ${attrs}/>`;
   else svg+=`<rect x="${a}" y="${y+3}" width="${Math.max(2,b-a)}" height="10" rx="2" fill="${c}" opacity="${t.status==="DONE"?.45:.9}" ${attrs}/>`;
+  if(t.id in p80late)svg+=`<circle cx="${b+12}" cy="${y+8}" r="4" fill="${p80late[t.id]?"var(--crit)":"#2e7d32"}"/>`;
   if(t.deadline){const x=LW+X(t.deadline);svg+=`<path d="M${x-4} ${y}h8l-4 6z" fill="var(--crit)"/>`}else if(t.due){const x=LW+X(t.due);svg+=`<path d="M${x-4} ${y}h8l-4 6z" fill="none" stroke="var(--warn)"/>`}});
  if($("showEdges").checked)D.edges.forEach(e=>{const p=pos[e.src],q2=pos[e.dst];if(!p||!q2)return;const x1=e.type[0]==="F"?p.b:p.a,x2=e.type[1]==="F"?q2.b:q2.a;
   svg+=`<path d="M${x1} ${p.y}h4V${q2.y}H${x2}" fill="none" stroke="#9aa3b2" stroke-width="1"/>`});
- svg+=`<line x1="${LW-1}" y1="0" x2="${LW-1}" y2="${H}" stroke="var(--line)"/></svg>`;const keep=box.scrollLeft,keepT=box.scrollTop;box.innerHTML=svg;box.scrollLeft=keep;box.scrollTop=keepT;
+ svg+=`<line x1="${LW-1}" y1="0" x2="${LW-1}" y2="${H}" stroke="var(--line)"/></svg>`;const keep=box.scrollLeft,keepT=box.scrollTop;G.painting=true;box.innerHTML=svg;box.scrollLeft=keep;box.scrollTop=keepT;G.painting=false;
  const byId=Object.fromEntries(view.map(t=>[t.id,t]));
  box.querySelectorAll("[data-id]").forEach(el=>{el.addEventListener("mousemove",e=>showTip(e,taskTip(byId[el.dataset.id])));el.addEventListener("mouseleave",hideTip)});
+ box.querySelectorAll("[data-fold]").forEach(el=>el.addEventListener("click",()=>{G.closed[el.dataset.fold]=!G.closed[el.dataset.fold];gantt()}));
  box.querySelectorAll("[data-move]").forEach(el=>{const t=byId[el.dataset.id];
   el.addEventListener("focus",()=>{if(selected!==t.id){selected=t.id}});
   el.addEventListener("pointerdown",e=>{if(e.button!==0)return;e.preventDefault();hideTip();try{el.setPointerCapture(e.pointerId)}catch(_){}const x0=e.clientX;let dx=0;
@@ -295,7 +307,8 @@ function viol(){const s=cur();const rows=s?s.violations:[];if(!rows.length){$("v
  tableSort($("viol"),rows,[["severity","Тип"],["code","Код"],["message","Описание"]])}
 function evidence(){const s=cur();$("evidence").textContent=JSON.stringify(s?s.evidence:D.scenarios.map(x=>({id:x.id,claim:x.claim,detail:x.detail})),null,2)}
 function all(){selected=null;kpis();gantt();heat();profile();why();viol();evidence();editChanged()}
-$("scenario").addEventListener("change",all);["zoom","proj","onlyCrit","onlyMoved","showBase","showEdges"].forEach(id=>$(id).addEventListener("change",gantt));
+$("scenario").addEventListener("change",all);["zoom","proj","plant","resf","onlyCrit","onlyMoved","showBase","showEdges"].forEach(id=>$(id).addEventListener("change",gantt));
+$("gantt").addEventListener("scroll",()=>{if(G.painting||G.scrollWait)return;G.scrollWait=true;requestAnimationFrame(()=>{G.scrollWait=false;if(!G.painting)gantt()})});
 $("q").addEventListener("input",gantt);addEventListener("resize",()=>{if($("zoom").value==="fit")gantt()});$("res").addEventListener("change",profile);
 if(D.workbench&&D.workbench.remote&&!D.program){$("banner").innerHTML="<div class='small mute'>Загрузка данных рабочего места…</div>";
  api("/api/data").then(d=>boot(d)).catch(e=>{$("banner").innerHTML=`<div class="errbox">${esc(e.message)}</div>`})}

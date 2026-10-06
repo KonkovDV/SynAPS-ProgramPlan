@@ -85,6 +85,22 @@ def test_export_roundtrip_keeps_dates_links_deadline_and_resource(tmp_path: Path
     assert str(result.evidence.get("plan_hash")) in out.read_text(encoding="utf-8")
 
 
+def test_export_writes_baseline_zero(tmp_path: Path) -> None:
+    from tests.conftest import program, task
+
+    prog = program(
+        [task("a", 3, planned_start=date(2026, 10, 5), planned_finish=date(2026, 10, 7))]
+    )
+    result = plan(prog, SolveConfig(time_limit_s=10))
+    assert result.outcome.ok and result.task("a").reference_start is not None
+    out = tmp_path / "plan.xml"
+    write_plan_mspdi(prog, result, out)
+    imported = read_mspdi(out, code="p1", report=ImportReport())
+    row = imported.tasks[0]
+    assert row.baseline_start == result.task("a").reference_start
+    assert row.baseline_finish == result.task("a").reference_finish
+
+
 def test_plan_roundtrip_mspdi(tmp_path: Path) -> None:
     from tests.conftest import dep, program, task
 

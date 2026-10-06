@@ -99,13 +99,19 @@ async def refuse_oversized_or_anonymous_remote(
     if len(await request.body()) > MAX_BODY_BYTES:
         return JSONResponse(status_code=413, content={"detail": "request body is larger than 32 MiB"})
     host = request.client.host if request.client else ""
+    remote = host not in _LOCAL_CLIENTS
+    if remote and request.url.scheme != "https":
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "a remote client is answered only over HTTPS"},
+        )
     tokens = TokenStore.from_env()
     if tokens.enabled:
         header = request.headers.get("authorization", "")
         token = header[7:].strip() if header.startswith("Bearer ") else None
         if tokens.authenticate(token) is None:
             return JSONResponse(status_code=401, content={"detail": "token rejected"})
-    elif host not in _LOCAL_CLIENTS:
+    elif remote:
         return JSONResponse(status_code=401, content={"detail": "remote API requires a token"})
     return await call_next(request)
 
@@ -175,10 +181,15 @@ def solve_program(body: SolveRequest) -> dict[str, Any]:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         except TimeoutError as exc:
             raise HTTPException(status_code=504, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         except RuntimeError as exc:
             raise HTTPException(status_code=500, detail=str(exc)) from exc
     else:
-        result = plan(program, config)
+        try:
+            result = plan(program, config)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     payload = result.model_dump(mode="json")
     if not result.outcome.ok:
         raise HTTPException(status_code=409, detail={"accepted": False, "result": payload})

@@ -64,9 +64,17 @@ def test_remote_client_without_a_token_is_refused(monkeypatch) -> None:
     assert local.get("/version").status_code == 200
 
 
-def test_remote_client_with_a_token_is_answered(monkeypatch) -> None:
+def test_remote_bearer_over_plain_http_is_refused(monkeypatch) -> None:
     monkeypatch.setenv("SYNAPS_PROGRAMPLAN_TOKENS", "secret=planner:ivanov")
     remote = TestClient(app, client=("203.0.113.8", 9))
+    refused = remote.get("/version", headers={"Authorization": "Bearer secret"})
+    assert refused.status_code == 401
+    assert "HTTPS" in refused.json()["detail"]
+
+
+def test_remote_bearer_over_https_is_answered(monkeypatch) -> None:
+    monkeypatch.setenv("SYNAPS_PROGRAMPLAN_TOKENS", "secret=planner:ivanov")
+    remote = TestClient(app, client=("203.0.113.8", 9), base_url="https://testserver")
     assert remote.get("/version").status_code == 401
     allowed = remote.get("/version", headers={"Authorization": "Bearer secret"})
     assert allowed.status_code == 200

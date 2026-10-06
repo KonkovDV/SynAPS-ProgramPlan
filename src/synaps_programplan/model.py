@@ -332,10 +332,26 @@ class OKRProgram(_Strict):
     def _references(self) -> Self:
         max_tasks = _limit("SYNAPS_PROGRAMPLAN_MAX_TASKS", 100_000)
         max_links = _limit("SYNAPS_PROGRAMPLAN_MAX_LINKS", 400_000)
+        max_resources = _limit("SYNAPS_PROGRAMPLAN_MAX_RESOURCES", 20_000)
+        max_horizon = _limit("SYNAPS_PROGRAMPLAN_MAX_HORIZON_DAYS", 8_000)
+        max_exclusions = _limit("SYNAPS_PROGRAMPLAN_MAX_EXCLUSIONS", 100_000)
+        max_risks = _limit("SYNAPS_PROGRAMPLAN_MAX_RISK_DRIVERS", 10_000)
         if len(self.tasks) > max_tasks:
             raise ValueError(f"program has {len(self.tasks)} tasks; the limit is {max_tasks}")
         if len(self.dependencies) > max_links:
             raise ValueError(f"program has {len(self.dependencies)} links; the limit is {max_links}")
+        if len(self.resources) > max_resources:
+            raise ValueError(f"program has {len(self.resources)} resources; the limit is {max_resources}")
+        if len(self.capacity_exceptions) > max_exclusions:
+            count = len(self.capacity_exceptions)
+            raise ValueError(f"program has {count} capacity exceptions; the limit is {max_exclusions}")
+        if len(self.risk_drivers) > max_risks:
+            raise ValueError(f"program has {len(self.risk_drivers)} risk drivers; the limit is {max_risks}")
+        span = (self.program.horizon_end - self.program.horizon_start).days
+        if span > max_horizon:
+            raise ValueError(f"program horizon is {span} days; the limit is {max_horizon}")
+        if self.program.horizon_start < date(2000, 1, 3):
+            raise ValueError("program horizon starts before 2000-01-03, which the calendar does not support")
         issues: list[str] = []
         _unique(issues, "calendar", [row.id for row in self.calendars])
         _unique(issues, "project", [row.id for row in self.projects])
@@ -514,7 +530,9 @@ def _graph_issues(program: OKRProgram) -> list[str]:
     cyclic = sorted(node for node, degree in indeg.items() if degree > 0)
     if cyclic:
         issues.append(f"dependency graph has a cycle through tasks {cyclic[:6]}")
-        return issues
+    # Bellman-Ford is exact: a listed cycle is a proven contradiction, an empty
+    # result means the max lags are feasible. A structural cycle is refused even
+    # when the weights compensate, because scheduling walks an acyclic link graph.
     if any(edge.max_lag_wd is not None for edge in program.dependencies):
         cycle = positive_cycle(program)
         if cycle:

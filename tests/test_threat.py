@@ -15,6 +15,24 @@ from tests.conftest import dep, program, task
 client = TestClient(app)
 
 
+def test_too_many_resources_and_a_long_horizon_are_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    from synaps_programplan.model import OKRProgram
+
+    monkeypatch.setenv("SYNAPS_PROGRAMPLAN_MAX_RESOURCES", "1")
+    wide = program([task("a", 2)], resources=[])
+    body = wide.model_dump(mode="json")
+    body["resources"] = [
+        {"id": "s1", "kind": "STAND", "code": "S1", "name": "s1", "capacity_units": 1},
+        {"id": "s2", "kind": "STAND", "code": "S2", "name": "s2", "capacity_units": 1},
+    ]
+    with pytest.raises(ValueError, match="limit is 1"):
+        OKRProgram.model_validate(body)
+    short = program([task("a", 2)]).model_dump(mode="json")
+    monkeypatch.setenv("SYNAPS_PROGRAMPLAN_MAX_HORIZON_DAYS", "10")
+    with pytest.raises(ValueError, match="horizon is"):
+        OKRProgram.model_validate(short)
+
+
 def test_too_many_tasks_are_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     prog = program([task("a", 2), task("b", 2)], [dep("a", "b")])
     monkeypatch.setenv("SYNAPS_PROGRAMPLAN_MAX_TASKS", "1")
