@@ -183,7 +183,7 @@ def generate(spec: SyntheticSpec | None = None) -> OKRProgram:
     _cross_links(rng, spec, projects, stage_milestones, tasks, deps)
     program = Program(
         id="prog",
-        name="Программа ОКР (синтетика)",
+        name="Учебная программа ОКР",
         calendar_id="ru",
         horizon_start=spec.start,
         horizon_end=spec.horizon_end,
@@ -304,7 +304,7 @@ def _risk_drivers(draft: OKRProgram) -> list[RiskDriver]:
                     mode=mode,
                     high=high,
                     task_ids=task_ids,
-                    owner="синтетика",
+                    owner="учебный реестр",
                 )
             )
     return drivers
