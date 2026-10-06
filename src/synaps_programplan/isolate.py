@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes
 import multiprocessing
 import os
+import sys
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -87,6 +88,9 @@ def _solve_worker(program_json: str, config: dict[str, object], queue: multiproc
 
 
 def _windows_rss_mb(pid: int) -> float | None:
+    if sys.platform != "win32":
+        return None
+
     class _Counters(ctypes.Structure):
         _fields_ = [
             ("cb", ctypes.c_ulong),

@@ -4,7 +4,7 @@
 
 Проверено на этой машине (Windows, Python 3.12, SynAPS на закреплённом коммите `786cf1b3bc915941558e7e50b2935de684a32643`), команда `SynAPS-ProgramPlan` из установленного пакета, без `PYTHONPATH`.
 
-- `python -m pytest tests -q`: 166 passed, 9 с. `ruff check src tests scripts`, `ruff format --check src tests scripts`, `mypy src`, `python scripts/lint_claims.py` — без замечаний. Три последних прогона CI на `main` падали только на формате `tests/test_mspdi.py`; файл отформатирован.
+- `python -m pytest tests -q`: 166 passed, 9 с. `ruff check src tests scripts`, `ruff format --check src tests scripts`, `mypy src`, `python scripts/lint_claims.py` — без замечаний. Прогоны CI на `main` падали на формате `tests/test_mspdi.py`, а за ним — на `mypy` под Linux: замер памяти процесса через `ctypes.windll` проверялся и там, где его нет. Файл отформатирован, замер для Windows отделён проверкой платформы; `mypy src --platform linux` чист.
 - `SynAPS-ProgramPlan doctor --demo out/demo` — код 0: установка в порядке, все семь планов показа сверены с программой по хешам, отчёт собран из плана A. Колесо продукта собирается и содержит шаблон отчёта и справочник этапов.
 - Причина варианта «Ресурсы» читает запас 20 % из плана. Нехватка из‑за запаса не называется отпуском. Хеш плана A и фраза про TESTER-2 в отчёте показа не изменились.
 - Причина варианта «что если» читается по изменённой программе. Расхождение хеша входа с этой программой — разрыв объяснения. Команда `demo` пишет `plan.xml`. Хеши планов показа решателем заново не считались.
