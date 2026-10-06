@@ -456,7 +456,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
     """One command: synthetic program -> analysis -> scenarios -> explanations -> report."""
     out: Path = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    program = generate(SyntheticSpec(projects=args.projects, seed=args.seed))
+    program = generate(SyntheticSpec(projects=args.projects, seed=args.seed, deadline_slack=3.0))
     save_program(program, out / "program.json")
     analysis = analyze(program)
     config = SolveConfig(time_limit_s=args.time_limit, seed=args.seed)

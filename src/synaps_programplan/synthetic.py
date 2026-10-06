@@ -1,8 +1,8 @@
 """Seeded generator of synthetic R&D (OKR) programs.
 
-Stages follow the GOST R 15.301 life cycle of an OKR (technical assignment,
-preliminary / technical design, working documentation, prototype, tests,
-documentation correction). Source-plan dates are an unlevelled CPM schedule,
+Stages come from ``okr_stages.json`` (technical assignment, preliminary and
+technical design, working documentation, prototype, preliminary tests,
+state and certification tests). Source-plan dates are an unlevelled CPM schedule,
 i.e. what a project office gets when per-project MS Project files are merged
 without resource levelling - so shared specialists and stands are overloaded
 on purpose.
@@ -43,15 +43,7 @@ from synaps_programplan.model import (
     WBSNode,
     difference_constraints,
 )
-
-STAGES = [
-    ("TZ", "Техническое задание и эскизный проект", ["designer", "systems"]),
-    ("TP", "Технический проект", ["designer", "electronics", "software"]),
-    ("RKD", "Рабочая конструкторская документация", ["designer", "electronics"]),
-    ("OO", "Изготовление опытного образца", ["technologist"]),
-    ("PI", "Предварительные испытания", ["tester"]),
-    ("KD", "Корректировка РКД и приёмка", ["designer", "systems"]),
-]
+from synaps_programplan.stages import stage_catalog
 
 SKILLS = {
     "designer": "Инженер-конструктор",
@@ -74,6 +66,7 @@ class SyntheticSpec:
     deadline_slack: float = 1.4
     vacations: int = 4
     maintenance: int = 1
+    enterprises: tuple[str, ...] = ()
     seed: int = 7
     start: date = date(2026, 10, 5)
     horizon_end: date = date(2029, 12, 28)
@@ -114,19 +107,23 @@ def generate(spec: SyntheticSpec | None = None) -> OKRProgram:
     tasks: list[Task] = []
     deps: list[Dependency] = []
     stage_milestones: dict[str, list[str]] = {}
+    stages = stage_catalog()
     for p_index in range(spec.projects):
         project_id = f"okr{p_index + 1}"
+        enterprise = spec.enterprises[p_index % len(spec.enterprises)] if spec.enterprises else None
         projects.append(
             Project(
                 id=project_id,
                 code=f"ОКР-{p_index + 1}",
                 name=f"ОКР «Изделие-{p_index + 1}»",
                 priority=rng.choice([300, 500, 700]),
+                enterprise=enterprise,
             )
         )
         previous_ms: str | None = None
         stage_milestones[project_id] = []
-        for s_index, (code, title, stage_skills) in enumerate(STAGES):
+        for s_index, stage in enumerate(stages):
+            code, title, stage_skills = stage.code, stage.name, list(stage.skills)
             node_id = f"{project_id}.{code}"
             wbs.append(
                 WBSNode(
@@ -136,7 +133,7 @@ def generate(spec: SyntheticSpec | None = None) -> OKRProgram:
             stage_tasks: list[str] = []
             for t_index in range(spec.tasks_per_stage):
                 task_id = f"{node_id}.{t_index + 1}"
-                is_test = code == "PI"
+                is_test = stage.test
                 skill = rng.choice(stage_skills)
                 demands = [Demand(skill_id=skill, units=rng.choice([5, 10, 10]))]
                 if is_test:
@@ -256,7 +253,8 @@ def _with_dates(rng: random.Random, spec: SyntheticSpec, draft: OKRProgram) -> O
     positions = _levelled_per_project(draft, exceptions)
     tasks: list[Task] = []
     baseline: dict[str, BaselineDates] = {}
-    finals = {p.id: f"{p.id}.KD.M" for p in draft.projects}
+    last_stage = stage_catalog()[-1].code
+    finals = {p.id: f"{p.id}.{last_stage}.M" for p in draft.projects}
     for task in draft.tasks:
         start_idx, end_idx = positions[task.id]
         start = axis.event_date(end_idx) if task.duration_wd == 0 else axis.start_date(start_idx)
@@ -290,7 +288,8 @@ def _risk_drivers(draft: OKRProgram) -> list[RiskDriver]:
     specs = [
         ("R-TEST", "Повторные испытания после отказа на стенде", 0.35, 1.1, 1.4, 1.9, ["PI"]),
         ("R-SUPPLY", "Задержка поставки комплектующих опытного образца", 0.3, 1.0, 1.25, 1.7, ["OO"]),
-        ("R-DOC", "Доработка КД по замечаниям нормоконтроля и заказчика", 0.4, 1.0, 1.15, 1.4, ["RKD", "KD"]),
+        ("R-DOC", "Доработка КД по замечаниям нормоконтроля и заказчика", 0.4, 1.0, 1.15, 1.4, ["RKD"]),
+        ("R-CERT", "Замечания государственных и сертификационных испытаний", 0.25, 1.0, 1.2, 1.6, ["GI"]),
     ]
     drivers: list[RiskDriver] = []
     for driver_id, name, probability, low, mode, high, stages in specs:

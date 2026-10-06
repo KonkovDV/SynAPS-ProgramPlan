@@ -12,6 +12,7 @@ Resource demand is in integer units. For a person, 10 units = 100% FTE, so
 
 from __future__ import annotations
 
+import os
 from collections import defaultdict
 from datetime import date, datetime
 from enum import StrEnum
@@ -20,6 +21,17 @@ from typing import Any, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 FTE_UNITS = 10
+
+
+def _limit(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
 
 
 class _Strict(BaseModel):
@@ -68,6 +80,8 @@ class Project(_Strict):
     name: str
     priority: int = Field(default=500, ge=1, le=1000)
     customer: str | None = None
+    # Executing plant. Load and dates are rolled up by this name.
+    enterprise: str | None = None
     due_date: date | None = None
     deadline: date | None = None
     domain_attributes: dict[str, Any] = Field(default_factory=dict)
@@ -316,6 +330,12 @@ class OKRProgram(_Strict):
 
     @model_validator(mode="after")
     def _references(self) -> Self:
+        max_tasks = _limit("SYNAPS_PROGRAMPLAN_MAX_TASKS", 100_000)
+        max_links = _limit("SYNAPS_PROGRAMPLAN_MAX_LINKS", 400_000)
+        if len(self.tasks) > max_tasks:
+            raise ValueError(f"program has {len(self.tasks)} tasks; the limit is {max_tasks}")
+        if len(self.dependencies) > max_links:
+            raise ValueError(f"program has {len(self.dependencies)} links; the limit is {max_links}")
         issues: list[str] = []
         _unique(issues, "calendar", [row.id for row in self.calendars])
         _unique(issues, "project", [row.id for row in self.projects])

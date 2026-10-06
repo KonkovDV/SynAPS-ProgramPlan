@@ -56,6 +56,9 @@ allow-direct-references = true
 [tool.hatch.build.targets.wheel]
 packages = ["src/synaps_programplan"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"src/synaps_programplan/okr_stages.json" = "synaps_programplan/okr_stages.json"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "."]

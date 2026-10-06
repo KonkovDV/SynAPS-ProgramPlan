@@ -18,7 +18,7 @@ from typing import Any, Literal
 from synaps_programplan.checker import check_plan
 from synaps_programplan.compiler import Compiled, compile_program, reference_index
 from synaps_programplan.explanations import explain
-from synaps_programplan.model import OKRProgram, TaskStatus
+from synaps_programplan.model import OKRProgram, ResourceKind, TaskStatus
 from synaps_programplan.planner import Adjustments, SolveConfig, _mark_critical, compute_kpi, plan
 from synaps_programplan.result import PlanResult, Severity, TaskPlan
 
@@ -165,6 +165,22 @@ def classify_churn(
     downstream -= pinned
     resource -= pinned | downstream
     other = sorted(moved - pinned - downstream - resource)
+    span = max(base_start.values(), default=0)
+    weighted = 0
+    frozen_moved = 0
+    freeze_until = program.freeze.freeze_until
+    for row in result.tasks:
+        old = base_start.get(row.task_id)
+        if old is None or old == row.start_index:
+            continue
+        weight = 1 + max(0, span - min(old, row.start_index))
+        weighted += abs(row.start_index - old) * weight
+        if (
+            freeze_until is not None
+            and row.reference_start is not None
+            and row.reference_start < freeze_until
+        ):
+            frozen_moved += 1
     return {
         "tasks": len(result.tasks),
         "moved": len(moved),
@@ -173,6 +189,9 @@ def classify_churn(
         "resource": len(moved & resource),
         "other": len(other),
         "other_ids": other[:20],
+        "weighted_shift_wd": weighted,
+        "stand_order_changes": _stand_order_changes(program, base, result),
+        "frozen_moved": frozen_moved,
     }
 
 
@@ -208,6 +227,27 @@ def _affected(program: OKRProgram, seeds: set[str]) -> tuple[set[str], set[str]]
                 resource.add(task_id)
                 growing = True
     return downstream, resource
+
+
+def _stand_order_changes(program: OKRProgram, base: PlanResult, result: PlanResult) -> int:
+    """How many stands have a different task order after the replan."""
+    stands = [resource.id for resource in program.resources if resource.kind is ResourceKind.STAND]
+    users: dict[str, set[str]] = {stand: set() for stand in stands}
+    for task in program.tasks:
+        for demand in task.demands:
+            if demand.resource_id in users:
+                users[demand.resource_id].add(task.id)
+    changes = 0
+    for task_ids in users.values():
+        if _order(base, task_ids) != _order(result, task_ids):
+            changes += 1
+    return changes
+
+
+def _order(plan: PlanResult, task_ids: set[str]) -> tuple[str, ...]:
+    rows = [row for row in plan.tasks if row.task_id in task_ids]
+    rows.sort(key=lambda row: (row.start_index, row.task_id))
+    return tuple(row.task_id for row in rows)
 
 
 def _resource_keys(program: OKRProgram) -> dict[str, tuple[str, ...]]:

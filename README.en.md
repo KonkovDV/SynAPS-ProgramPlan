@@ -39,7 +39,7 @@ The scheduler has been measured on the public sets used by research groups and s
 | RCPSP/max j10, j20, j30 | 810 | Start-to-start links, minimum and maximum lags. Every instance known to be infeasible is proved infeasible. Known optima match on every instance except one |
 | Study programmes | 3 sizes | Up to 64 projects and 2,688 activities. A plan is accepted at every size. CP-SAT cuts the greedy plan's total tardiness by 54%, 45% and 28% |
 
-Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 131.
+Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 140.
 
 ## What the programme manager gets
 
@@ -129,6 +129,10 @@ Each step is worked through with examples in [`docs/user-guide.md`](docs/user-gu
 
 The pilot sequence and the acceptance criteria are in [`docs/pilot-and-roadmap.md`](docs/pilot-and-roadmap.md).
 
+## Customer
+
+The customer is the United Engine Corporation, an integrated group that develops, builds and services gas-turbine engines, site [www.uecrus.com](https://www.uecrus.com). Request no. 1 is a consolidated schedule for a development programme that shares specialists, test stands, links and dates. The request is open until 31 December 2026. The requirements, the effect the customer expects and the pilot sequence are in [`docs/pilot-and-roadmap.md`](docs/pilot-and-roadmap.md) (Russian).
+
 ## Customer data
 
 Customer data is not stored in the repository and does not leave the closed network. Only anonymised plans are used. Every programme records where it came from: a study set, a public set, anonymised customer data, or an experiment. The report shows that on the first screen. With no roles configured, the planner's desk answers only on the same computer. Language models take no part in the calculation: they create no constraints and do not change the plan. Explanations are built only from the facts of a checked plan. See [`docs/security-and-data.md`](docs/security-and-data.md).
@@ -146,7 +150,7 @@ The guides below are in Russian.
 | [Architecture](docs/architecture.md) | The parts of the system and the path the data takes |
 | [Quality](docs/quality-assurance.md) | Tests, public-set runs, reproducibility |
 | [Data and security](docs/security-and-data.md) | The closed network, anonymisation, roles, the journal, rules for AI |
-| [Pilot](docs/pilot-and-roadmap.md) | What is needed from the customer, the pilot stages, acceptance criteria |
+| [Pilot](docs/pilot-and-roadmap.md) | The customer, request no. 1, the pilot stages, acceptance criteria |
 | [Administrator's guide](docs/admin-guide.md) | Offline install, TLS, sign-in through a corporate proxy, the journal |
 | [Acceptance](docs/acceptance/pmi.md) | Test procedure, specification, protocol template, demonstration script |
 | [Glossary](docs/glossary.md) | Planning terms |

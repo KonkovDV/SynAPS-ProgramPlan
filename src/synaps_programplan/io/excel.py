@@ -8,6 +8,7 @@ separated by ``;``. An empty id cell or a row whose first cell starts with
 
 from __future__ import annotations
 
+import zipfile
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -39,9 +40,30 @@ from synaps_programplan.model import (
     WBSNode,
 )
 
+MAX_XLSX_FILES = 64
+MAX_XLSX_UNCOMPRESSED = 32 * 1024 * 1024
+MAX_XLSX_RATIO = 100
+
+
+def _refuse_expanding_workbook(path: Path) -> None:
+    """Stop a zip bomb before openpyxl unpacks it."""
+    try:
+        archive = zipfile.ZipFile(path)
+    except zipfile.BadZipFile as exc:
+        raise ValueError(f"{path.name} is not an Excel workbook") from exc
+    with archive:
+        parts = archive.infolist()
+        if len(parts) > MAX_XLSX_FILES:
+            raise ValueError(f"{path.name} contains too many parts to be read")
+        expanded = sum(part.file_size for part in parts)
+        packed = sum(part.compress_size for part in parts) or 1
+        if expanded > MAX_XLSX_UNCOMPRESSED or expanded / packed > MAX_XLSX_RATIO:
+            raise ValueError(f"{path.name} expands too far to be read")
+
+
 _SHEETS: dict[str, list[str]] = {
     "Program": ["id", "name", "horizon_start", "horizon_end", "status_date"],
-    "Projects": ["id", "code", "name", "priority", "due_date", "deadline"],
+    "Projects": ["id", "code", "name", "priority", "due_date", "deadline", "enterprise"],
     "WBS": ["id", "project_id", "parent_id", "code", "name", "kind"],
     "Tasks": [
         "id",
@@ -101,6 +123,7 @@ def write_excel(program: OKRProgram, path: Path) -> None:
 
 
 def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgram:
+    _refuse_expanding_workbook(path)
     book = load_workbook(path, data_only=True, read_only=True)
     try:
         tables = {name: _table(book, name) for name in _SHEETS}
@@ -164,6 +187,7 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
                 priority=_int(row, "priority", default=500),
                 due_date=_date(row, "due_date"),
                 deadline=_date(row, "deadline"),
+                enterprise=_opt(row, "enterprise"),
             )
             for row in tables["Projects"]
         ],
@@ -254,6 +278,7 @@ def _rows(program: OKRProgram) -> dict[str, list[dict[str, Any]]]:
                 "priority": p.priority,
                 "due_date": p.due_date,
                 "deadline": p.deadline,
+                "enterprise": p.enterprise,
             }
             for p in program.projects
         ],

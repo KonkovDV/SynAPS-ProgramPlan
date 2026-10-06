@@ -1,0 +1,48 @@
+{
+ "seed": 42,
+ "solver": "greedy",
+ "tasks_per_stage": 4,
+ "note": "Люди и стенды растут вместе с числом проектов, как в scripts/bench_scale.py. Жадный поиск ядра ограничен 120 с (регистрация GREED). Модель ядра принимает не больше 10 000 рабочих центров. Отдельно: 5010 работ при 2 людях на компетенцию и 4 стендах — жадный план не найден, 50,8 с, 180 МБ.",
+ "rows": [
+  {
+   "projects": 167,
+   "tasks": 5010,
+   "links": 7730,
+   "resources": 553,
+   "solver": "greedy",
+   "claim": "HEURISTIC_FEASIBLE",
+   "ok": true,
+   "generate_seconds": 51.5,
+   "seconds": 117.8,
+   "rss_mb": 1221.1,
+   "limit_s": 180.0
+  },
+  {
+   "projects": 290,
+   "tasks": 8700,
+   "links": 13433,
+   "resources": 966,
+   "solver": "greedy",
+   "claim": "ERROR",
+   "ok": false,
+   "generate_seconds": 191.8,
+   "seconds": 122.1,
+   "rss_mb": 270.2,
+   "limit_s": 180.0
+  },
+  {
+   "projects": 334,
+   "tasks": 10020,
+   "links": 15443,
+   "resources": 1113,
+   "solver": "greedy",
+   "claim": "ValidationError",
+   "ok": false,
+   "generate_seconds": 253.9,
+   "seconds": 0.8,
+   "rss_mb": 286.4,
+   "limit_s": 180.0,
+   "detail": "work_centers exceeds max supported items (10020 > 10000)"
+  }
+ ]
+}

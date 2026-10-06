@@ -79,7 +79,7 @@ def evidence_stamp(
         "iso16290_trl": ISO16290_TRL,
         "data_provenance": data_provenance,
         "input_hash": input_hash,
-        "config": config,
+        "config": to_canonical(config),
         "config_hash": fingerprint(config),
         "runtime": runtime_manifest(),
     }

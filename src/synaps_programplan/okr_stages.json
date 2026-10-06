@@ -1,0 +1,9 @@
+[
+  {"code": "TZ", "name": "Техническое задание", "skills": ["designer", "systems"]},
+  {"code": "EP", "name": "Эскизный проект", "skills": ["designer", "systems"]},
+  {"code": "TP", "name": "Технический проект", "skills": ["designer", "electronics", "software"]},
+  {"code": "RKD", "name": "Рабочая конструкторская документация", "skills": ["designer", "electronics"]},
+  {"code": "OO", "name": "Изготовление опытного образца", "skills": ["technologist"]},
+  {"code": "PI", "name": "Предварительные испытания", "skills": ["tester"], "test": true},
+  {"code": "GI", "name": "Государственные и сертификационные испытания", "skills": ["tester", "systems"], "test": true}
+]

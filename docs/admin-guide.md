@@ -18,18 +18,18 @@
 На машине с сетью, той же ОС и тем же процессором, что у контура:
 
 ```text
-python -m pip download -r requirements.lock -d wheelhouse
-python -m pip download ".[api]" -d wheelhouse
+python scripts/fetch_wheelhouse.py
 ```
 
-Каталог `wheelhouse` вместе с исходниками переносится в контур на съёмном носителе. В контуре:
+Скрипт скачивает пакеты из `requirements.lock` в каталог `wheelhouse` и записывает `requirements-hashed.txt`: у каждого пакета хеш SHA-256 скачанного файла. Каталог `wheelhouse` в репозиторий не входит. Если переменная `SYNAPS_SOURCE` указывает на каталог ядра с тем же коммитом, что в `requirements.lock`, в набор попадает и его колесо. Для другой ОС или другого процессора скрипт запускают там, а не на машине сборки Windows.
+
+Каталог `wheelhouse`, `requirements-hashed.txt` и исходники переносятся в контур на съёмном носителе. В контуре:
 
 ```text
-python -m pip install --no-index --find-links wheelhouse -r requirements.lock
-python -m pip install --no-index --find-links wheelhouse ".[api]"
+python -m pip install --no-index --find-links wheelhouse -r requirements-hashed.txt
 ```
 
-Проверка, что сеть не нужна для расчёта: `SynAPS-ProgramPlan version` печатает имя, версию и полный коммит ядра. Команды `demo`, `solve`, `serve` после этого не обращаются к внешним адресам.
+Проверка, что сеть не нужна для расчёта: `SynAPS-ProgramPlan version` печатает имя, версию и полный коммит ядра. Команды `demo`, `solve`, `serve` после этого не обращаются к внешним адресам. Прогон на Astra Linux и РЕД ОС делается на самой этой системе и в протокол контура заносится отдельно.
 
 ## 3. Рабочее место
 

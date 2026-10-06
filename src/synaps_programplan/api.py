@@ -25,6 +25,7 @@ from synaps_programplan.auth import TokenStore
 from synaps_programplan.checker import check_plan
 from synaps_programplan.conflicts import analyze
 from synaps_programplan.edits import check_moves
+from synaps_programplan.isolate import plan_isolated
 from synaps_programplan.model import OKRProgram
 from synaps_programplan.montecarlo import simulate
 from synaps_programplan.planner import SolveConfig, plan
@@ -159,7 +160,25 @@ def solve_program(body: SolveRequest) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail="solver must be cpsat or greedy")
     program = _program(body.program)
     solver_name: Literal["cpsat", "greedy"] = "greedy" if body.solver == "greedy" else "cpsat"
-    result = plan(program, SolveConfig(solver=solver_name, time_limit_s=body.time_limit_s, seed=body.seed))
+    config = SolveConfig(solver=solver_name, time_limit_s=body.time_limit_s, seed=body.seed)
+    memory = os.environ.get("SYNAPS_PROGRAMPLAN_MEMORY_MB", "").strip()
+    if memory:
+        try:
+            cap = int(memory)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=500, detail="SYNAPS_PROGRAMPLAN_MEMORY_MB is not an integer"
+            ) from exc
+        try:
+            result = plan_isolated(program, config, memory_mb=cap)
+        except MemoryError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except TimeoutError as exc:
+            raise HTTPException(status_code=504, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+    else:
+        result = plan(program, config)
     payload = result.model_dump(mode="json")
     if not result.outcome.ok:
         raise HTTPException(status_code=409, detail={"accepted": False, "result": payload})

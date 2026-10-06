@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 out/
+wheelhouse/
 out_demo.*
 scratch/
 .kernel_regress.txt
