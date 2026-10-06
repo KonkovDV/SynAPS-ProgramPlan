@@ -14,7 +14,9 @@ somewhere the journal cannot rewrite, as ``anchor``.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,9 +27,20 @@ ACTIONS = ("accept", "reject", "check", "repair")
 
 
 def _digest(record: dict[str, Any]) -> str:
-    body = {key: value for key, value in record.items() if key != "hash"}
+    body = {key: value for key, value in record.items() if key not in {"hash", "sig"}}
     canonical = json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _journal_key(key: str | None) -> str | None:
+    if key is not None:
+        return key or None
+    value = os.environ.get("SYNAPS_PROGRAMPLAN_JOURNAL_KEY", "").strip()
+    return value or None
+
+
+def _sign(record_hash: str, key: str) -> str:
+    return hmac.new(key.encode("utf-8"), record_hash.encode("ascii"), hashlib.sha256).hexdigest()
 
 
 def witness_path(path: Path) -> Path:
@@ -69,6 +82,7 @@ def append_decision(
     input_hash: str | None,
     reason: str = "",
     details: dict[str, Any] | None = None,
+    key: str | None = None,
 ) -> dict[str, Any]:
     if action not in ACTIONS:
         raise ValueError(f"action must be one of {ACTIONS}")
@@ -87,6 +101,9 @@ def append_decision(
         "prev": records[-1]["hash"] if records else GENESIS,
     }
     record["hash"] = _digest(record)
+    signing_key = _journal_key(key)
+    if signing_key is not None:
+        record["sig"] = _sign(record["hash"], signing_key)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
@@ -105,7 +122,16 @@ class JournalCheck:
         return {"ok": self.ok, "records": self.records, "broken_at": self.broken_at, "reason": self.reason}
 
 
-def _verify_chain(path: Path) -> JournalCheck:
+def _signature_rejected(record: dict[str, Any], key: str | None) -> bool:
+    signing_key = _journal_key(key)
+    if signing_key is None:
+        return False
+    signature = record.get("sig")
+    expected = _sign(str(record.get("hash", "")), signing_key)
+    return not isinstance(signature, str) or not hmac.compare_digest(signature, expected)
+
+
+def _verify_chain(path: Path, key: str | None = None) -> JournalCheck:
     records = read_journal(path)
     previous = GENESIS
     for index, record in enumerate(records, start=1):
@@ -115,13 +141,20 @@ def _verify_chain(path: Path) -> JournalCheck:
             return JournalCheck(False, len(records), index, "previous-hash link is broken")
         if record.get("hash") != _digest(record):
             return JournalCheck(False, len(records), index, "record content does not match its hash")
+        if _signature_rejected(record, key):
+            return JournalCheck(False, len(records), index, "record signature does not match the journal key")
         previous = record["hash"]
     return JournalCheck(True, len(records))
 
 
-def verify_journal(path: Path, *, anchor: str | None = None) -> JournalCheck:
-    """Chain, then the head witness, then an optional hash stored outside the journal."""
-    check = _verify_chain(path)
+def verify_journal(path: Path, *, anchor: str | None = None, key: str | None = None) -> JournalCheck:
+    """Chain, then the head witness, then an optional hash stored outside the journal.
+
+    A key (argument or ``SYNAPS_PROGRAMPLAN_JOURNAL_KEY``) also requires each
+    record to carry an HMAC-SHA256 of its hash. Without a key the signature is
+    not checked, so an old unsigned journal still verifies.
+    """
+    check = _verify_chain(path, key)
     if not check.ok:
         return check
     records = read_journal(path)
@@ -144,13 +177,13 @@ def verify_journal(path: Path, *, anchor: str | None = None) -> JournalCheck:
     return check
 
 
-def seal_journal(path: Path) -> JournalCheck:
+def seal_journal(path: Path, *, key: str | None = None) -> JournalCheck:
     """Write the head witness for a chain that does not have one yet.
 
     Refuses when a witness already exists and disagrees: sealing must not hide
     a truncated or replaced journal.
     """
-    check = _verify_chain(path)
+    check = _verify_chain(path, key)
     if not check.ok:
         return check
     records = read_journal(path)

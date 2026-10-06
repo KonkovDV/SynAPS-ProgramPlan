@@ -8,7 +8,11 @@ roles and the operator journal live in the workbench (``workbench.py``,
 
 from __future__ import annotations
 
+import os
+import time
+from collections import deque
 from datetime import date
+from threading import Lock
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
@@ -32,6 +36,8 @@ from synaps_programplan.versions import CLAIM_LEVEL, ISO16290_TRL, NAME, SYNAPS_
 app = FastAPI(title=NAME, version=VERSION)
 MAX_BODY_BYTES = 32 * 1024 * 1024
 _LOCAL_CLIENTS = frozenset({"127.0.0.1", "::1", "localhost", "testclient"})
+_HITS: dict[str, deque[float]] = {}
+_RATE_LOCK = Lock()
 
 
 def _declared_body_too_large(request: Request) -> JSONResponse | None:
@@ -44,6 +50,32 @@ def _declared_body_too_large(request: Request) -> JSONResponse | None:
         return JSONResponse(status_code=400, content={"detail": "content-length is not an integer"})
     if size > MAX_BODY_BYTES:
         return JSONResponse(status_code=413, content={"detail": "request body is larger than 32 MiB"})
+    return None
+
+
+def _too_many_requests(request: Request) -> JSONResponse | None:
+    """Per-address cap for one minute. Unset means the proxy of the site applies it."""
+    raw = os.environ.get("SYNAPS_PROGRAMPLAN_RATE_PER_MIN", "").strip()
+    if not raw:
+        return None
+    try:
+        limit = int(raw)
+    except ValueError:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "SYNAPS_PROGRAMPLAN_RATE_PER_MIN is not an integer"},
+        )
+    if limit < 1:
+        return None
+    host = request.client.host if request.client else ""
+    now = time.monotonic()
+    with _RATE_LOCK:
+        bucket = _HITS.setdefault(host, deque())
+        while bucket and now - bucket[0] >= 60:
+            bucket.popleft()
+        if len(bucket) >= limit:
+            return JSONResponse(status_code=429, content={"detail": "rate limit exceeded"})
+        bucket.append(now)
     return None
 
 
@@ -60,6 +92,9 @@ async def refuse_oversized_or_anonymous_remote(
     refused = _declared_body_too_large(request)
     if refused is not None:
         return refused
+    limited = _too_many_requests(request)
+    if limited is not None:
+        return limited
     if len(await request.body()) > MAX_BODY_BYTES:
         return JSONResponse(status_code=413, content={"detail": "request body is larger than 32 MiB"})
     host = request.client.host if request.client else ""

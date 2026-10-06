@@ -72,6 +72,23 @@ def test_remote_client_with_a_token_is_answered(monkeypatch) -> None:
     assert allowed.status_code == 200
 
 
+def test_rate_limit_refuses_the_next_request(monkeypatch) -> None:
+    monkeypatch.setenv("SYNAPS_PROGRAMPLAN_RATE_PER_MIN", "1")
+    api._HITS.clear()
+    local = TestClient(app, client=("127.0.0.1", 9))
+    assert local.get("/version").status_code == 200
+    assert local.get("/version").status_code == 429
+    api._HITS.clear()
+
+
+def test_the_workbench_does_not_import_the_compute_api() -> None:
+    from pathlib import Path
+
+    source = Path("src/synaps_programplan/workbench.py").read_text(encoding="utf-8")
+    assert "synaps_programplan.api" not in source
+    assert "import api" not in source
+
+
 def test_oversized_body_is_refused(monkeypatch) -> None:
     monkeypatch.setattr(api, "MAX_BODY_BYTES", 32)
     response = client.post("/version", content=b"x" * 64)

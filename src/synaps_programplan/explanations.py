@@ -98,6 +98,29 @@ def explain(
     return out
 
 
+def explanation_gaps(program: OKRProgram, result: PlanResult) -> list[str]:
+    """Stored explanations must equal a fresh reading of the same accepted plan."""
+    if not result.outcome.ok:
+        return []
+    fresh = {item.task_id: item for item in explain(program, result)}
+    gaps: list[str] = []
+    for item in result.explanations:
+        again = fresh.get(item.task_id)
+        if again is None:
+            gaps.append(f"{item.task_id}: в плане нет причины для этой записи")
+            continue
+        same = (
+            item.cause_code == again.cause_code
+            and item.cause_refs == again.cause_refs
+            and item.chain == again.chain
+            and item.shift_wd == again.shift_wd
+            and item.text == again.text
+        )
+        if not same:
+            gaps.append(f"{item.task_id}: текст не совпадает с фактами плана")
+    return gaps
+
+
 def _context(program: OKRProgram, result: PlanResult, adjustments: Adjustments) -> _Ctx:
     compiled = compile_program(
         program,

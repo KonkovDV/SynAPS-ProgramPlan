@@ -503,7 +503,11 @@ def cmd_demo(args: argparse.Namespace) -> int:
 def cmd_journal(args: argparse.Namespace) -> int:
     from synaps_programplan.journal import seal_journal
 
-    check = seal_journal(args.journal) if args.seal else verify_journal(args.journal, anchor=args.anchor)
+    check = (
+        seal_journal(args.journal, key=args.key)
+        if args.seal
+        else verify_journal(args.journal, anchor=args.anchor, key=args.key)
+    )
     records = read_journal(args.journal)
     head = records[-1]["hash"] if records and check.ok else None
     _print(
@@ -692,6 +696,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("journal", type=Path)
     p.add_argument("--tail", type=int, default=0)
     p.add_argument("--anchor", help="хеш последней записи, сохранённый вне журнала")
+    p.add_argument("--key", help="ключ подписи; иначе переменная SYNAPS_PROGRAMPLAN_JOURNAL_KEY")
     p.add_argument("--seal", action="store_true", help="записать печать головной записи, если её ещё нет")
     p.set_defaults(func=cmd_journal)
 
