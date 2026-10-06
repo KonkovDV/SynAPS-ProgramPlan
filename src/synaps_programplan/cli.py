@@ -28,7 +28,7 @@ from synaps_programplan.io.mpp import read_mpp
 from synaps_programplan.io.mspdi import ImportReport, read_mspdi, write_plan_mspdi
 from synaps_programplan.io.xer import read_xer
 from synaps_programplan.journal import read_journal, verify_journal
-from synaps_programplan.merge import merge_projects, read_links_csv
+from synaps_programplan.merge import merge_projects, read_aliases_csv, read_links_csv
 from synaps_programplan.model import OKRProgram, Provenance, ProvenanceKind
 from synaps_programplan.montecarlo import RiskResult, simulate
 from synaps_programplan.planner import SolveConfig, plan
@@ -114,6 +114,7 @@ def cmd_import(args: argparse.Namespace) -> int:
     report = ImportReport()
     projects = []
     links = read_links_csv(args.links) if args.links else []
+    aliases = read_aliases_csv(args.aliases) if args.aliases else {}
     for index, path in enumerate(args.files):
         if path.suffix.lower() == ".xer":
             imported, cross = read_xer(path, report=report)
@@ -146,7 +147,20 @@ def cmd_import(args: argparse.Namespace) -> int:
         status_date=args.status_date,
         links=links,
         provenance=provenance,
+        aliases=aliases,
     )
+    losses = [item.as_dict() for item in report.losses + merge.losses]
+    blocking = [item for item in losses if item["action"] != "info"]
+    if args.losses:
+        args.losses.write_text(json.dumps(losses, ensure_ascii=False, indent=1), encoding="utf-8")
+    if args.strict and blocking:
+        _print(
+            {
+                "error": "strict import refused: the file lost or approximated data",
+                "losses": blocking,
+            }
+        )
+        return 2
     save_program(program, args.out)
     _print(
         {
@@ -156,6 +170,7 @@ def cmd_import(args: argparse.Namespace) -> int:
             "shared_resources": merge.shared_resources,
             "capacity_conflicts": merge.capacity_conflicts,
             "notes": report.notes + merge.notes,
+            "losses": losses,
         }
     )
     return 0
@@ -536,11 +551,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("files", type=Path, nargs="+")
     p.add_argument("--codes", nargs="*")
     p.add_argument("--links", type=Path, help="CSV межпроектных связей")
+    p.add_argument("--aliases", type=Path, help="CSV соответствий имён ресурсов: alias, canonical")
     p.add_argument("--program-id", default="program")
     p.add_argument("--name", default="Программа ОКР")
     p.add_argument("--status-date", type=date.fromisoformat)
     p.add_argument("--soft-deadlines", action="store_true", help="Deadline из MS Project как плановый срок")
     p.add_argument("--provenance", choices=[k.value for k in ProvenanceKind], default="experiment")
+    p.add_argument(
+        "--strict",
+        action="store_true",
+        help="не записывать программу, если импорт что-то пропустил или приблизил",
+    )
+    p.add_argument("--losses", type=Path, help="JSON отчёта потерь импорта")
     p.add_argument("--out", type=Path, required=True)
     p.set_defaults(func=cmd_import)
 

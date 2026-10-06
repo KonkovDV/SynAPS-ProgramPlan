@@ -163,7 +163,12 @@ def read_xer(
         kind = row.get("task_type", "TT_Task")
         label = row.get("task_code") or row["task_id"]
         if kind in ("TT_LOE", "TT_WBS"):
-            report.note(f"{code}.{label}: {kind} (уровень усилий / суммарная) пропущена")
+            report.note(
+                f"{code}.{label}: {kind} (уровень усилий / суммарная) пропущена",
+                code="LOE_OR_SUMMARY",
+                object_id=f"{code}.{label}",
+                action="skipped",
+            )
             continue
         task_id = f"{code}.{label}"
         if task_id in seen:
@@ -182,12 +187,20 @@ def read_xer(
         src, dst = task_ids.get(row.get("pred_task_id", "")), task_ids.get(row.get("task_id", ""))
         if src is None or dst is None:
             report.note(
-                f"связь {row.get('pred_task_id')}->{row.get('task_id')}: работа не импортирована — пропущено"
+                f"связь {row.get('pred_task_id')}->{row.get('task_id')}: работа не импортирована — пропущено",
+                code="PREDECESSOR_MISSING",
+                object_id=f"{row.get('pred_task_id')}->{row.get('task_id')}",
+                action="skipped",
             )
             continue
         link_type = _LINK.get(row.get("pred_type", "PR_FS"))
         if link_type is None:
-            report.note(f"{src}->{dst}: тип связи {row.get('pred_type')} неизвестен — принят FS")
+            report.note(
+                f"{src}->{dst}: тип связи {row.get('pred_type')} неизвестен — принят FS",
+                code="UNKNOWN_LINK_TYPE",
+                object_id=f"{src}->{dst}",
+                action="approximated",
+            )
             link_type = DependencyType.FS
         lag = round(_float(row.get("lag_hr_cnt")) / task_hpd.get(row.get("pred_task_id", ""), 8.0))
         is_cross = row.get("pred_proj_id", row.get("proj_id")) != row.get("proj_id")
@@ -226,7 +239,9 @@ def read_xer(
         )
     report.note(
         "XER: базовый план Primavera хранится отдельным проектом и не импортирован; "
-        "эталон — даты текущего плана"
+        "эталон — даты текущего плана",
+        code="BASELINE_NOT_IN_FILE",
+        action="info",
     )
     return out, cross
 
@@ -246,10 +261,20 @@ def _task(
     if not milestone and duration == 0:
         if _float(row.get("target_drtn_hr_cnt")) > 0:
             duration = 1
-            report.note(f"{task_id}: длительность < 1 раб. дня округлена до 1")
+            report.note(
+                f"{task_id}: длительность < 1 раб. дня округлена до 1",
+                code="DURATION_ROUNDED",
+                object_id=task_id,
+                action="approximated",
+            )
         else:
             milestone = True
-            report.note(f"{task_id}: работа нулевой длительности импортирована как веха")
+            report.note(
+                f"{task_id}: работа нулевой длительности импортирована как веха",
+                code="ZERO_DURATION_AS_MILESTONE",
+                object_id=task_id,
+                action="approximated",
+            )
     if milestone:
         duration = 0
     status_code = row.get("status_code", "TK_NotStart")
@@ -260,13 +285,23 @@ def _task(
         if act_start and act_end:
             status = TaskStatus.DONE
         else:
-            report.note(f"{task_id}: статус «завершена» без фактических дат — оставлена плановой")
+            report.note(
+                f"{task_id}: статус «завершена» без фактических дат — оставлена плановой",
+                code="STATUS_WITHOUT_DATES",
+                object_id=task_id,
+                action="approximated",
+            )
     elif status_code == "TK_Active":
         if act_start:
             status = TaskStatus.IN_PROGRESS
             remaining = max(0, round(_float(row.get("remain_drtn_hr_cnt")) / hpd))
         else:
-            report.note(f"{task_id}: статус «начата» без фактического старта — оставлена плановой")
+            report.note(
+                f"{task_id}: статус «начата» без фактического старта — оставлена плановой",
+                code="STATUS_WITHOUT_DATES",
+                object_id=task_id,
+                action="approximated",
+            )
     start = _date(row.get("early_start_date")) or _date(row.get("target_start_date"))
     finish = _date(row.get("early_end_date")) or _date(row.get("target_end_date"))
     earliest = latest = None
@@ -288,9 +323,19 @@ def _task(
             latest = when
         elif ctype in _IGNORED_CONSTRAINTS:
             label = _IGNORED_CONSTRAINTS[ctype]
-            report.note(f"{task_id}: ограничение {ctype} ({label}) не поддерживается — пропущено")
+            report.note(
+                f"{task_id}: ограничение {ctype} ({label}) не поддерживается — пропущено",
+                code="CONSTRAINT_UNSUPPORTED",
+                object_id=task_id,
+                action="skipped",
+            )
         else:
-            report.note(f"{task_id}: ограничение {ctype} неизвестно — пропущено")
+            report.note(
+                f"{task_id}: ограничение {ctype} неизвестно — пропущено",
+                code="CONSTRAINT_UNKNOWN",
+                object_id=task_id,
+                action="skipped",
+            )
     wbs_id = (
         f"{code}.w{row['wbs_id']}" if row.get("wbs_id") and f"{code}.w{row['wbs_id']}" in known_wbs else None
     )
@@ -328,7 +373,12 @@ def _resources(
         name = row.get("rsrc_name") or row.get("rsrc_short_name") or row["rsrc_id"]
         rtype = row.get("rsrc_type", "RT_Labor")
         if rtype == "RT_Mat":
-            report.note(f"ресурс {name}: материальный ресурс пропущен")
+            report.note(
+                f"ресурс {name}: материальный ресурс пропущен",
+                code="MATERIAL_RESOURCE",
+                object_id=name,
+                action="skipped",
+            )
             continue
         units = max(1, round(rates.get(row["rsrc_id"], 1.0) * FTE_UNITS))
         if rtype == "RT_Equip":
@@ -352,7 +402,10 @@ def _resources(
         units = max(1, round(_float(row.get("target_qty_per_hr"), 1.0) * FTE_UNITS))
         if units > assigned.capacity_units:
             report.note(
-                f"задача {row.get('task_id')}: назначение {assigned.code} больше доступного — ограничено"
+                f"задача {row.get('task_id')}: назначение {assigned.code} больше доступного — ограничено",
+                code="ASSIGNMENT_CLAMPED",
+                object_id=str(row.get("task_id") or ""),
+                action="clamped",
             )
             units = assigned.capacity_units
         demands[row["task_id"]].append(Demand(resource_id=assigned.id, units=units))

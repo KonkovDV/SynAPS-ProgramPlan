@@ -149,9 +149,19 @@ def _task(
     duration = 0 if milestone else days
     if not milestone and duration == 0:
         duration = 1
-        report.note(f"{task_id}: длительность < 1 раб. дня округлена до 1")
+        report.note(
+            f"{task_id}: длительность < 1 раб. дня округлена до 1",
+            code="DURATION_ROUNDED",
+            object_id=task_id,
+            action="approximated",
+        )
     if elapsed:
-        report.note(f"{task_id}: календарная длительность приближена рабочими днями ({duration})")
+        report.note(
+            f"{task_id}: календарная длительность приближена рабочими днями ({duration})",
+            code="ELAPSED_DURATION",
+            object_id=task_id,
+            action="approximated",
+        )
     pct = float(node.getPercentageComplete() or 0)
     actual_start, actual_finish = _py_date(node.getActualStart()), _py_date(node.getActualFinish())
     status = TaskStatus.PLANNED
@@ -201,7 +211,12 @@ def _constraint(node: Any, task_id: str, report: ImportReport) -> tuple[date | N
     if kind == "FINISH_NO_LATER_THAN":
         return None, when, False
     if kind in ("AS_LATE_AS_POSSIBLE", "START_NO_LATER_THAN", "FINISH_NO_EARLIER_THAN"):
-        report.note(f"{task_id}: ограничение {kind} не поддерживается и проигнорировано")
+        report.note(
+            f"{task_id}: ограничение {kind} не поддерживается и проигнорировано",
+            code="CONSTRAINT_UNSUPPORTED",
+            object_id=task_id,
+            action="skipped",
+        )
     return None, None, False
 
 
@@ -222,15 +237,30 @@ def _links(
                 continue
             src = f"{prefix}{int(pred.getUniqueID())}"
             if bool(pred.getSummary()) or f"{prefix}w{int(pred.getUniqueID())}" in summary_ids:
-                report.note(f"{dst}: связь от суммарной задачи пропущена (свяжите листовые работы)")
+                report.note(
+                    f"{dst}: связь от суммарной задачи пропущена (свяжите листовые работы)",
+                    code="SUMMARY_LINK_SKIPPED",
+                    object_id=dst,
+                    action="skipped",
+                )
                 continue
             if src not in durations:
-                report.note(f"{dst}: предшественник {pred.getUniqueID()} не найден — пропущено")
+                report.note(
+                    f"{dst}: предшественник {pred.getUniqueID()} не найден — пропущено",
+                    code="PREDECESSOR_MISSING",
+                    object_id=dst,
+                    action="skipped",
+                )
                 continue
             kind = DependencyType(str(relation.getType() or "FS"))
             lag, elapsed = _working_days(relation.getLag(), minutes_per_day)
             if elapsed:
-                report.note(f"{src}->{dst}: календарный лаг приближён рабочими днями ({lag})")
+                report.note(
+                    f"{src}->{dst}: календарный лаг приближён рабочими днями ({lag})",
+                    code="ELAPSED_LAG",
+                    object_id=f"{src}->{dst}",
+                    action="approximated",
+                )
             out.append(Dependency(src_task_id=src, dst_task_id=dst, type=kind, lag_wd=lag))
     return out
 
@@ -245,7 +275,12 @@ def _resources(
             continue
         kind_name = str(item.getType() or "WORK")
         if kind_name in ("MATERIAL", "COST"):
-            report.note(f"ресурс {item.getName()}: материальный/затратный ресурс пропущен")
+            report.note(
+                f"ресурс {item.getName()}: материальный/затратный ресурс пропущен",
+                code="MATERIAL_RESOURCE",
+                object_id=str(item.getName()),
+                action="skipped",
+            )
             continue
         units = _fte(item.getMaxUnits())
         kind = ResourceKind.EQUIPMENT if kind_name == "NON_LABOR" else ResourceKind.PERSON

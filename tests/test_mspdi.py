@@ -61,6 +61,30 @@ def test_mspdi_import_and_merge(tmp_path: Path) -> None:
     assert program.program.status_date == date(2026, 10, 5)
 
 
+def test_export_roundtrip_keeps_dates_links_deadline_and_resource(tmp_path: Path) -> None:
+    from tests.conftest import dep, program, stand, task, uses
+
+    prog = program(
+        [task("a", 3, deadline=date(2026, 11, 2), demands=uses("st")), task("b", 2)],
+        [dep("a", "b", "FS", 2)],
+        resources=[stand()],
+    )
+    result = plan(prog, SolveConfig(time_limit_s=10))
+    assert result.outcome.ok
+    out = tmp_path / "plan.xml"
+    write_plan_mspdi(prog, result, out)
+    imported = read_mspdi(out, code="p1", report=ImportReport())
+    by_name = {item.name: item for item in imported.tasks}
+    assert by_name["a"].duration_wd == 3 and by_name["b"].duration_wd == 2
+    assert by_name["a"].planned_start == result.task("a").start
+    assert by_name["b"].planned_finish == result.task("b").finish
+    assert by_name["a"].deadline == date(2026, 11, 2)
+    assert by_name["a"].demands[0].units == 1
+    link = imported.dependencies[0]
+    assert link.type is DependencyType.FS and link.lag_wd == 2
+    assert str(result.evidence.get("plan_hash")) in out.read_text(encoding="utf-8")
+
+
 def test_plan_roundtrip_mspdi(tmp_path: Path) -> None:
     from tests.conftest import dep, program, task
 

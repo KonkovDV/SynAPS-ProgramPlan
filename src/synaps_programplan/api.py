@@ -13,7 +13,11 @@ from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
+from synaps_programplan.auth import TokenStore
 from synaps_programplan.checker import check_plan
 from synaps_programplan.conflicts import analyze
 from synaps_programplan.edits import check_moves
@@ -26,6 +30,48 @@ from synaps_programplan.result import PlanResult, Severity
 from synaps_programplan.versions import CLAIM_LEVEL, ISO16290_TRL, NAME, SYNAPS_COMMIT, VERSION
 
 app = FastAPI(title=NAME, version=VERSION)
+MAX_BODY_BYTES = 32 * 1024 * 1024
+_LOCAL_CLIENTS = frozenset({"127.0.0.1", "::1", "localhost", "testclient"})
+
+
+def _declared_body_too_large(request: Request) -> JSONResponse | None:
+    declared = request.headers.get("content-length")
+    if declared is None:
+        return None
+    try:
+        size = int(declared)
+    except ValueError:
+        return JSONResponse(status_code=400, content={"detail": "content-length is not an integer"})
+    if size > MAX_BODY_BYTES:
+        return JSONResponse(status_code=413, content={"detail": "request body is larger than 32 MiB"})
+    return None
+
+
+@app.middleware("http")
+async def refuse_oversized_or_anonymous_remote(
+    request: Request, call_next: RequestResponseEndpoint
+) -> Response:
+    """32 MiB is the body cap. Without tokens only a local client is answered.
+
+    ``Content-Length`` above the cap is refused before the body is read.
+    ``request.body()`` is what Starlette replays to the handler; ``stream()``
+    would leave that handler with an empty body.
+    """
+    refused = _declared_body_too_large(request)
+    if refused is not None:
+        return refused
+    if len(await request.body()) > MAX_BODY_BYTES:
+        return JSONResponse(status_code=413, content={"detail": "request body is larger than 32 MiB"})
+    host = request.client.host if request.client else ""
+    tokens = TokenStore.from_env()
+    if tokens.enabled:
+        header = request.headers.get("authorization", "")
+        token = header[7:].strip() if header.startswith("Bearer ") else None
+        if tokens.authenticate(token) is None:
+            return JSONResponse(status_code=401, content={"detail": "token rejected"})
+    elif host not in _LOCAL_CLIENTS:
+        return JSONResponse(status_code=401, content={"detail": "remote API requires a token"})
+    return await call_next(request)
 
 
 class SolveRequest(BaseModel):

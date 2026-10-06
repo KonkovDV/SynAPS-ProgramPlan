@@ -4,6 +4,7 @@ from datetime import date
 
 from fastapi.testclient import TestClient
 
+from synaps_programplan import api
 from synaps_programplan.api import app
 from tests.conftest import dep, program, task
 
@@ -53,3 +54,25 @@ def test_solve_and_risk_on_a_chain() -> None:
         "/check", json={"program": _body(prog), "plan": solved.json()["result"], "moves": {"z": "2026-10-05"}}
     )
     assert unknown.status_code == 422
+
+
+def test_remote_client_without_a_token_is_refused(monkeypatch) -> None:
+    monkeypatch.delenv("SYNAPS_PROGRAMPLAN_TOKENS", raising=False)
+    remote = TestClient(app, client=("203.0.113.8", 9))
+    assert remote.get("/version").status_code == 401
+    local = TestClient(app, client=("127.0.0.1", 9))
+    assert local.get("/version").status_code == 200
+
+
+def test_remote_client_with_a_token_is_answered(monkeypatch) -> None:
+    monkeypatch.setenv("SYNAPS_PROGRAMPLAN_TOKENS", "secret=planner:ivanov")
+    remote = TestClient(app, client=("203.0.113.8", 9))
+    assert remote.get("/version").status_code == 401
+    allowed = remote.get("/version", headers={"Authorization": "Bearer secret"})
+    assert allowed.status_code == 200
+
+
+def test_oversized_body_is_refused(monkeypatch) -> None:
+    monkeypatch.setattr(api, "MAX_BODY_BYTES", 32)
+    response = client.post("/version", content=b"x" * 64)
+    assert response.status_code == 413

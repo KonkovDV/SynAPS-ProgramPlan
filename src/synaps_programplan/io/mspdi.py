@@ -64,12 +64,46 @@ class ImportedProject:
     source_hash: str = ""
 
 
+@dataclass(frozen=True)
+class ImportLoss:
+    """One thing the import did not carry across unchanged."""
+
+    code: str
+    object_id: str
+    action: str
+    message: str
+
+    def as_dict(self) -> dict[str, str]:
+        return {
+            "code": self.code,
+            "object_id": self.object_id,
+            "action": self.action,
+            "message": self.message,
+        }
+
+
 @dataclass
 class ImportReport:
     notes: list[str] = field(default_factory=list)
+    losses: list[ImportLoss] = field(default_factory=list)
 
-    def note(self, text: str) -> None:
+    def note(
+        self,
+        text: str,
+        *,
+        code: str = "NOTE",
+        object_id: str = "",
+        action: str = "info",
+    ) -> None:
+        """``action`` is ``skipped``, ``approximated``, ``clamped`` or ``info``.
+
+        Only ``info`` is allowed through ``--strict``. The others are losses.
+        """
         self.notes.append(text)
+        self.losses.append(ImportLoss(code=code, object_id=object_id, action=action, message=text))
+
+    def blocking(self) -> list[ImportLoss]:
+        return [item for item in self.losses if item.action != "info"]
 
 
 def _q(tag: str) -> str:
@@ -187,7 +221,12 @@ def _task(
         duration = 0
     elif duration == 0:
         duration = 1
-        report.note(f"{task_id}: длительность < 1 раб. дня округлена до 1")
+        report.note(
+            f"{task_id}: длительность < 1 раб. дня округлена до 1",
+            code="DURATION_ROUNDED",
+            object_id=task_id,
+            action="approximated",
+        )
     start, finish = _date(_text(node, "Start")), _date(_text(node, "Finish"))
     actual_start, actual_finish = _date(_text(node, "ActualStart")), _date(_text(node, "ActualFinish"))
     pct = int(float(_text(node, "PercentComplete") or 0))
@@ -216,7 +255,12 @@ def _task(
         earliest = start
     elif constraint in ("1", "5", "6"):
         label = {"1": "ALAP", "5": "SNLT", "6": "FNET"}[constraint]
-        report.note(f"{task_id}: ограничение {label} не поддерживается и проигнорировано")
+        report.note(
+            f"{task_id}: ограничение {label} не поддерживается и проигнорировано",
+            code="CONSTRAINT_UNSUPPORTED",
+            object_id=task_id,
+            action="skipped",
+        )
     deadline = _date(_text(node, "Deadline"))
     task = Task(
         id=task_id,
@@ -263,10 +307,20 @@ def _links(
         pred = _text(link, "PredecessorUID") or ""
         src = f"{prefix}{pred}"
         if pred in summary_uids:
-            report.note(f"{dst}: связь от суммарной задачи {pred} пропущена (свяжите листовые работы)")
+            report.note(
+                f"{dst}: связь от суммарной задачи {pred} пропущена (свяжите листовые работы)",
+                code="SUMMARY_LINK_SKIPPED",
+                object_id=dst,
+                action="skipped",
+            )
             continue
         if src not in durations:
-            report.note(f"{dst}: предшественник {pred} не найден (внешняя связь?) — пропущено")
+            report.note(
+                f"{dst}: предшественник {pred} не найден (внешняя связь?) — пропущено",
+                code="PREDECESSOR_MISSING",
+                object_id=dst,
+                action="skipped",
+            )
             continue
         kind = _LINK.get(_text(link, "Type") or "1", DependencyType.FS)
         lag_raw = float(_text(link, "LinkLag") or 0)
@@ -277,7 +331,12 @@ def _links(
             lag = round(lag_raw / 10 / minutes_per_day)
             if lag_format in _ELAPSED_FORMATS:
                 lag = round(lag * 5 / 7)
-                report.note(f"{src}->{dst}: календарный лаг приближён рабочими днями ({lag})")
+                report.note(
+                    f"{src}->{dst}: календарный лаг приближён рабочими днями ({lag})",
+                    code="ELAPSED_LAG",
+                    object_id=f"{src}->{dst}",
+                    action="approximated",
+                )
         out.append(Dependency(src_task_id=src, dst_task_id=dst, type=kind, lag_wd=lag))
     return out
 
@@ -294,7 +353,12 @@ def _resources(
         if uid == "0" or not name:
             continue
         if (_text(item, "Type") or "1") != "1":
-            report.note(f"ресурс {name}: материальный/затратный ресурс пропущен")
+            report.note(
+                f"ресурс {name}: материальный/затратный ресурс пропущен",
+                code="MATERIAL_RESOURCE",
+                object_id=name,
+                action="skipped",
+            )
             continue
         units = max(1, round(float(_text(item, "MaxUnits") or 1) * FTE_UNITS))
         kind = ResourceKind.GROUP if units > FTE_UNITS else ResourceKind.PERSON
@@ -311,7 +375,12 @@ def _resources(
         units = max(1, round(float(_text(item, "Units") or 1) * FTE_UNITS))
         resource = by_uid[res_uid]
         if units > resource.capacity_units:
-            report.note(f"{task_id}: назначение {resource.code} {units / FTE_UNITS:g} > MaxUnits, ограничено")
+            report.note(
+                f"{task_id}: назначение {resource.code} {units / FTE_UNITS:g} > MaxUnits, ограничено",
+                code="ASSIGNMENT_CLAMPED",
+                object_id=task_id,
+                action="clamped",
+            )
             units = resource.capacity_units
         demands.setdefault(task_id, []).append(Demand(resource_id=resource.id, units=units))
     return resources, demands
@@ -415,7 +484,7 @@ def write_plan_mspdi(
                 )
                 level = 3
             for row in members:
-                elements[row.task_id] = emit(
+                element = emit(
                     row.task_id,
                     row.name,
                     level,
@@ -425,6 +494,13 @@ def write_plan_mspdi(
                     row.duration_wd,
                     row.is_milestone,
                 )
+                elements[row.task_id] = element
+                source = program.task(row.task_id)
+                if source.hard_finish is not None:
+                    ET.SubElement(element, _q("Deadline")).text = f"{source.hard_finish}T18:00:00"
+                reason = next((item.text for item in plan.explanations if item.task_id == row.task_id), "")
+                stamp = str(plan.evidence.get("plan_hash") or "")
+                ET.SubElement(element, _q("Notes")).text = f"plan_hash {stamp}. {reason}".strip()
     reverse = {v: k for k, v in _LINK.items()}
     for edge in program.dependencies:
         if edge.dst_task_id not in elements or edge.src_task_id not in rows:
@@ -434,4 +510,24 @@ def write_plan_mspdi(
         ET.SubElement(link, _q("Type")).text = reverse[edge.type]
         ET.SubElement(link, _q("LinkLag")).text = str(edge.lag_wd * minutes_per_day * 10)
         ET.SubElement(link, _q("LagFormat")).text = "7"
+    resources_node = ET.SubElement(root, _q("Resources"))
+    resource_uid: dict[str, int] = {}
+    for index, resource in enumerate(program.resources, start=1):
+        resource_uid[resource.id] = index
+        resource_node = ET.SubElement(resources_node, _q("Resource"))
+        ET.SubElement(resource_node, _q("UID")).text = str(index)
+        ET.SubElement(resource_node, _q("Name")).text = resource.name
+        ET.SubElement(resource_node, _q("Type")).text = "1"
+        ET.SubElement(resource_node, _q("MaxUnits")).text = str(resource.capacity_units / FTE_UNITS)
+    assignments = ET.SubElement(root, _q("Assignments"))
+    for row in plan.tasks:
+        if row.task_id not in uid:
+            continue
+        for demand in program.task(row.task_id).demands:
+            if demand.resource_id not in resource_uid:
+                continue
+            item = ET.SubElement(assignments, _q("Assignment"))
+            ET.SubElement(item, _q("TaskUID")).text = str(uid[row.task_id])
+            ET.SubElement(item, _q("ResourceUID")).text = str(resource_uid[demand.resource_id])
+            ET.SubElement(item, _q("Units")).text = str(demand.units / FTE_UNITS)
     ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)

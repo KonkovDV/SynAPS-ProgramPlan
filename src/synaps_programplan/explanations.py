@@ -444,8 +444,22 @@ def infeasibility_witness(
         "witness": witness,
         "minimal": minimal,
         "probes": probes,
-        "text": "несовместимы требования: " + "; ".join(item.text for item in kept),
+        "text": _witness_text(witness),
     }
+
+
+def _witness_text(witness: list[dict[str, Any]]) -> str:
+    text = "несовместимы требования: " + "; ".join(
+        str(item.get("text") or item.get("ref")) for item in witness
+    )
+    if len(witness) < 2 or any("alone_sufficient" not in item for item in witness):
+        return text
+    flags = [item.get("alone_sufficient") for item in witness]
+    if all(flag is True for flag in flags):
+        return text + ". Достаточно ослабить любое из них"
+    if all(flag is False for flag in flags):
+        return text + ". Ослабления одного недостаточно: нужно ослабить весь набор"
+    return text
 
 
 def _needed_relaxation(program: OKRProgram, item: Requirement, config: SolveConfig) -> dict[str, Any]:

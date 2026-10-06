@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 from pathlib import Path
 
@@ -150,6 +151,20 @@ def test_xer_written_by_an_independent_reader_is_imported(tmp_path: Path) -> Non
     assert any("нулевой длительности" in note for note in report.notes)
     assert any(d.type is DependencyType.FS and d.lag_wd == 0 for d in projects[0].dependencies)
     assert projects[0].resources[0].capacity_units == 10
+
+
+def test_strict_import_refuses_a_file_that_drops_data(tmp_path: Path) -> None:
+    source = _write(tmp_path)
+    out = tmp_path / "program.json"
+    losses = tmp_path / "losses.json"
+    assert main(["import", str(source), "--strict", "--losses", str(losses), "--out", str(out)]) == 2
+    assert not out.exists()
+    payload = json.loads(losses.read_text(encoding="utf-8"))
+    codes = {item["code"] for item in payload}
+    assert "CONSTRAINT_UNSUPPORTED" in codes
+    assert "MATERIAL_RESOURCE" in codes
+    assert "LOE_OR_SUMMARY" in codes
+    assert any(item["code"] == "BASELINE_NOT_IN_FILE" and item["action"] == "info" for item in payload)
 
 
 def test_cli_imports_xer(tmp_path: Path) -> None:

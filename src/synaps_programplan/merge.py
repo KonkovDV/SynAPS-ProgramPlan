@@ -13,9 +13,10 @@ import csv
 import re
 from dataclasses import dataclass, field
 from datetime import date
+from difflib import SequenceMatcher
 from pathlib import Path
 
-from synaps_programplan.io.mspdi import ImportedProject
+from synaps_programplan.io.mspdi import ImportedProject, ImportLoss
 from synaps_programplan.model import (
     Calendar,
     CalendarBase,
@@ -37,6 +38,7 @@ class MergeReport:
     shared_resources: dict[str, list[str]] = field(default_factory=dict)
     capacity_conflicts: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    losses: list[ImportLoss] = field(default_factory=list)
 
 
 def normalise(name: str) -> str:
@@ -56,18 +58,33 @@ def merge_projects(
     horizon_end: date | None = None,
     links: list[Dependency] | None = None,
     provenance: Provenance | None = None,
+    aliases: dict[str, str] | None = None,
 ) -> tuple[OKRProgram, MergeReport]:
     report = MergeReport()
     shared: dict[str, Resource] = {}
     remap: dict[str, str] = {}
     owners: dict[str, list[str]] = {}
+    agreed = aliases or {}
     for project in projects:
         for resource in project.resources:
-            key = normalise(resource.name)
+            agreed_name = agreed.get(normalise(resource.name))
+            key = normalise(agreed_name or resource.name)
+            display = agreed_name or resource.name
+            if agreed_name and normalise(resource.name) != key:
+                message = f"{project.code}: «{resource.name}» сопоставлено с «{display}»"
+                report.notes.append(message)
+                report.losses.append(
+                    ImportLoss(
+                        code="ALIAS_APPLIED",
+                        object_id=resource.name,
+                        action="info",
+                        message=message,
+                    )
+                )
             existing = shared.get(key)
             if existing is None:
-                rid = f"res:{_slug(resource.name)}"
-                existing = resource.model_copy(update={"id": rid})
+                rid = f"res:{_slug(display)}"
+                existing = resource.model_copy(update={"id": rid, "name": display, "code": display})
                 shared[key] = existing
             elif existing.capacity_units != resource.capacity_units:
                 report.capacity_conflicts.append(
@@ -83,6 +100,7 @@ def merge_projects(
     report.shared_resources = {
         rid: sorted(set(codes)) for rid, codes in owners.items() if len(set(codes)) > 1
     }
+    _note_similar_names(shared, report)
 
     tasks = []
     wbs = []
@@ -101,8 +119,15 @@ def merge_projects(
     known = {task.id for task in tasks}
     for link in links or []:
         if link.src_task_id not in known or link.dst_task_id not in known:
-            report.notes.append(
-                f"межпроектная связь {link.src_task_id}->{link.dst_task_id}: работа не найдена"
+            message = f"межпроектная связь {link.src_task_id}->{link.dst_task_id}: работа не найдена"
+            report.notes.append(message)
+            report.losses.append(
+                ImportLoss(
+                    code="CROSS_LINK_MISSING",
+                    object_id=f"{link.src_task_id}->{link.dst_task_id}",
+                    action="skipped",
+                    message=message,
+                )
             )
             continue
         dependencies.append(link)
@@ -130,6 +155,43 @@ def merge_projects(
         provenance=provenance or Provenance(kind=ProvenanceKind.EXPERIMENT, source="mspdi merge"),
     )
     return program, report
+
+
+def _note_similar_names(shared: dict[str, Resource], report: MergeReport) -> None:
+    """Suggest a correspondence. Do not merge resources the table did not name."""
+    keys = list(shared)
+    for index, left in enumerate(keys):
+        for right in keys[index + 1 :]:
+            if SequenceMatcher(None, left, right).ratio() < 0.86:
+                continue
+            message = (
+                f"похожие ресурсы «{shared[left].name}» и «{shared[right].name}» "
+                "не объединены: добавьте строку в таблицу соответствий"
+            )
+            report.notes.append(message)
+            report.losses.append(
+                ImportLoss(
+                    code="SIMILAR_RESOURCE",
+                    object_id=f"{shared[left].id}|{shared[right].id}",
+                    action="info",
+                    message=message,
+                )
+            )
+
+
+def read_aliases_csv(path: Path) -> dict[str, str]:
+    """Columns ``alias`` and ``canonical`` (also ``from`` / ``to``)."""
+    out: dict[str, str] = {}
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        sample = handle.read(2048)
+        handle.seek(0)
+        dialect = csv.Sniffer().sniff(sample or "alias,canonical\n", delimiters=",;\t")
+        for row in csv.DictReader(handle, dialect=dialect):
+            source = row.get("alias") or row.get("from") or row.get("name") or ""
+            target = row.get("canonical") or row.get("to") or ""
+            if source.strip() and target.strip():
+                out[normalise(source)] = target.strip()
+    return out
 
 
 def _merge_demands(demands: list[Demand]) -> list[Demand]:
