@@ -196,7 +196,9 @@ def _cause(ctx: _Ctx, task_id: str) -> tuple[str, list[str], str]:
         answer = (
             "CROSS_PROJECT_DEPENDENCY" if cross else "DEPENDENCY",
             [src],
-            f"ждёт «{ctx.names[src]}» (связь {rel}" + (f", ОКР {ctx.projects[src]}" if cross else "") + ")",
+            f"ждёт «{ctx.names[src]}» (связь {rel}"
+            + (f", {_project_code(ctx, ctx.projects[src])}" if cross else "")
+            + ")",
         )
     elif start == window.lo:
         reason = window.reasons_lo[-1]
@@ -213,6 +215,13 @@ def _cause(ctx: _Ctx, task_id: str) -> tuple[str, list[str], str]:
         answer = _resource_cause(ctx, row)
     ctx.cache[task_id] = answer
     return answer
+
+
+def _project_code(ctx: _Ctx, project_id: str) -> str:
+    for project in ctx.program.projects:
+        if project.id == project_id:
+            return project.code
+    return project_id
 
 
 def _resource_cause(ctx: _Ctx, row: TaskPlan) -> tuple[str, list[str], str]:
@@ -241,10 +250,11 @@ def _resource_cause(ctx: _Ctx, row: TaskPlan) -> tuple[str, list[str], str]:
                 )
             others = sorted({ctx.projects[t] for t in occupants} - {row.project_id})
             names = ", ".join(f"«{ctx.names[t]}»" for t in occupants[:3])
+            foreign = ", ".join(_project_code(ctx, item) for item in others)
             return (
                 "RESOURCE_CONTENTION" if others else "RESOURCE_BUSY",
                 [rid, *occupants],
-                f"{resource.code} занят {when}: {names}" + (f" (ОКР {', '.join(others)})" if others else ""),
+                f"{resource.code} занят {when}: {names}" + (f" ({foreign})" if foreign else ""),
             )
     return ("OPTIMIZER_CHOICE", [], "положение выбрано оптимизатором (ограничение не активно)")
 
