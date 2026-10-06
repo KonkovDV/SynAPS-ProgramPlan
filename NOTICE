@@ -1,0 +1,21 @@
+SynAPS-ProgramPlan
+Copyright (c) 2026 SynAPS-ProgramPlan contributors
+Licensed under the MIT License (see LICENSE).
+
+This product is built on SynAPS (https://github.com/KonkovDV/SynAPS), pinned
+by the commit recorded in src/synaps_programplan/versions.py. SynAPS is
+distributed under its own license; keep that license with any build that
+ships the kernel.
+
+Optional import of MS Project MPP and MPX uses MPXJ (https://github.com/joniles/mpxj),
+which is licensed under the GNU Lesser General Public License, version 2.1 or
+later. MPXJ is not part of this repository. It is pulled in only by the extra
+dependency `mpxj` (Java bytecode in that package, started in a separate JVM
+through JPype). If a delivery includes that extra, ship MPXJ's license text
+and offer the corresponding source of the version named in requirements.lock.
+The rest of SynAPS-ProgramPlan does not become LGPL because of this optional
+process boundary.
+
+Other runtime libraries (OR-Tools, Pydantic, OpenPyXL, defusedxml, and, for
+the workbench, FastAPI, Starlette, HTTPX, Uvicorn) keep their own licenses.
+The machine-readable list is sbom.cdx.json.

@@ -1,0 +1,80 @@
+{
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.5",
+ "version": 1,
+ "metadata": {
+  "component": {
+   "type": "application",
+   "name": "SynAPS-ProgramPlan",
+   "version": "0.1.0"
+  }
+ },
+ "components": [
+  {
+   "type": "library",
+   "name": "synaps",
+   "version": "0.1.0",
+   "purl": "pkg:github/KonkovDV/SynAPS@786cf1b3bc915941558e7e50b2935de684a32643"
+  },
+  {
+   "type": "library",
+   "name": "pydantic",
+   "version": "2.13.5",
+   "purl": "pkg:pypi/pydantic@2.13.5"
+  },
+  {
+   "type": "library",
+   "name": "ortools",
+   "version": "9.15.6755",
+   "purl": "pkg:pypi/ortools@9.15.6755"
+  },
+  {
+   "type": "library",
+   "name": "defusedxml",
+   "version": "0.7.1",
+   "purl": "pkg:pypi/defusedxml@0.7.1"
+  },
+  {
+   "type": "library",
+   "name": "openpyxl",
+   "version": "3.1.5",
+   "purl": "pkg:pypi/openpyxl@3.1.5"
+  },
+  {
+   "type": "library",
+   "name": "fastapi",
+   "version": "0.141.1",
+   "purl": "pkg:pypi/fastapi@0.141.1"
+  },
+  {
+   "type": "library",
+   "name": "starlette",
+   "version": "1.6.0",
+   "purl": "pkg:pypi/starlette@1.6.0"
+  },
+  {
+   "type": "library",
+   "name": "httpx",
+   "version": "0.28.1",
+   "purl": "pkg:pypi/httpx@0.28.1"
+  },
+  {
+   "type": "library",
+   "name": "uvicorn",
+   "version": "0.53.0",
+   "purl": "pkg:pypi/uvicorn@0.53.0"
+  },
+  {
+   "type": "library",
+   "name": "mpxj",
+   "version": "16.10.0",
+   "purl": "pkg:pypi/mpxj@16.10.0"
+  },
+  {
+   "type": "library",
+   "name": "JPype1",
+   "version": "1.7.1",
+   "purl": "pkg:pypi/jpype1@1.7.1"
+  }
+ ]
+}

@@ -154,6 +154,17 @@ def test_skill_pool_is_bound_to_people() -> None:
     assert result.metadata["skill_binding"] == "exact"
 
 
+@pytest.mark.parametrize("solver", ["alns", "rhc"])
+def test_kernel_heuristics_are_checked_and_not_called_optimal(solver: str) -> None:
+    prog = program(
+        [task("a", 3, demands=uses("st")), task("b", 3, "p2", demands=uses("st"))],
+        resources=[stand()],
+    )
+    result = _accepted(plan(prog, SolveConfig(solver=solver, time_limit_s=8)))  # type: ignore[arg-type]
+    assert result.outcome.claim is Claim.HEURISTIC_FEASIBLE
+    assert sorted((_start(result, "a"), _start(result, "b"))) == [0, 3]
+
+
 def test_greedy_is_heuristic_and_checked() -> None:
     prog = program(
         [task("a", 3, demands=uses("st")), task("b", 3, "p2", demands=uses("st")), task("c", 2)],
@@ -218,6 +229,10 @@ def test_unproven_infeasibility_is_not_claimed() -> None:
     assert _claim(SolverStatus.INFEASIBLE, False, cpsat, False, proof=False) is Claim.ERROR
     greedy = SolveConfig(solver="greedy")
     assert _claim(SolverStatus.INFEASIBLE, False, greedy, False, proof=True) is Claim.ERROR
+    assert (
+        _claim(SolverStatus.OPTIMAL, True, SolveConfig(solver="alns"), True, proof=True)
+        is Claim.HEURISTIC_FEASIBLE
+    )
 
 
 def test_same_seed_same_plan_hash() -> None:

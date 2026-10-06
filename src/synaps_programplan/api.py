@@ -73,10 +73,10 @@ def analyze_program(payload: dict[str, Any]) -> dict[str, object]:
 
 @app.post("/solve")
 def solve_program(body: SolveRequest) -> dict[str, Any]:
-    if body.solver not in {"cpsat", "greedy"}:
-        raise HTTPException(status_code=422, detail="solver must be cpsat or greedy")
+    if body.solver not in {"cpsat", "greedy", "alns", "rhc"}:
+        raise HTTPException(status_code=422, detail="solver must be cpsat, greedy, alns or rhc")
     program = _program(body.program)
-    solver_name: Literal["cpsat", "greedy"] = "greedy" if body.solver == "greedy" else "cpsat"
+    solver_name: Literal["cpsat", "greedy", "alns", "rhc"] = body.solver  # type: ignore[assignment]
     result = plan(program, SolveConfig(solver=solver_name, time_limit_s=body.time_limit_s, seed=body.seed))
     payload = result.model_dump(mode="json")
     if not result.outcome.ok:
@@ -92,17 +92,30 @@ class CheckRequest(BaseModel):
 
 @app.post("/check")
 def check(body: CheckRequest) -> dict[str, Any]:
-    """Independent check of a plan, optionally with manual moves (no solver)."""
+    """Independent check of a plan, optionally with manual moves (no solver).
+
+    HTTP 200 only when the checker found no hard violation. A plan that fails
+    is 409, the same rule as ``/solve``: a client that publishes on status 200
+    cannot publish a broken plan.
+    """
     program = _program(body.program)
     try:
         accepted = PlanResult.model_validate(body.plan)
         if body.moves:
-            return check_moves(program, accepted, body.moves)
+            payload = check_moves(program, accepted, body.moves)
+        else:
+            violations = check_plan(program, accepted.tasks)
+            hard = sum(v.severity is Severity.HARD for v in violations)
+            payload = {
+                "ok": hard == 0,
+                "hard": hard,
+                "violations": [v.model_dump(mode="json") for v in violations],
+            }
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    violations = check_plan(program, accepted.tasks)
-    hard = sum(v.severity is Severity.HARD for v in violations)
-    return {"ok": hard == 0, "hard": hard, "violations": [v.model_dump(mode="json") for v in violations]}
+    if not payload["ok"]:
+        raise HTTPException(status_code=409, detail=payload)
+    return payload
 
 
 @app.post("/risk")

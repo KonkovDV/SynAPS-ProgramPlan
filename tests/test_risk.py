@@ -35,6 +35,44 @@ def test_max_lag_link_keeps_its_minimum_lag_in_the_simulation() -> None:
     assert milestone.p50 == accepted.task("m").finish
 
 
+def test_a_draw_that_breaks_a_max_lag_is_not_a_sample() -> None:
+    from synaps_programplan.model import RiskDriver
+
+    prog = program(
+        [task("a", 1), task("c", 1), task("b", 1)],
+        [dep("a", "b", lag=0, max_lag_wd=2), dep("c", "b")],
+        risk_drivers=[
+            RiskDriver(id="R", name="stretch", probability=1, low=5, mode=5, high=5, task_ids=["c"])
+        ],
+    )
+    accepted = plan(prog, SolveConfig(time_limit_s=5))
+    assert accepted.outcome.ok
+    nominal = simulate(prog, accepted, runs=4, seed=1, low_factor=1, high_factor=1)
+    # The driver is certain, so every draw stretches c past the max lag from a.
+    without = prog.model_copy(update={"risk_drivers": []})
+    quiet = simulate(without, accepted, runs=4, seed=1, low_factor=1, high_factor=1)
+    assert quiet.scheduled_runs == 4
+    assert nominal.scheduled_runs == 0
+
+
+def test_grouped_drivers_occur_together() -> None:
+    from synaps_programplan.model import RiskDriver
+    from synaps_programplan.montecarlo import _occurrence_draws
+
+    drivers = [
+        RiskDriver(id="A", name="a", probability=0.5, task_ids=["a"], group="storm"),
+        RiskDriver(id="B", name="b", probability=0.5, task_ids=["b"], group="storm"),
+        RiskDriver(id="C", name="c", probability=0.5, task_ids=["a"]),
+    ]
+    rng = __import__("random").Random(1)
+    disagree = 0
+    for _ in range(200):
+        hit = _occurrence_draws(drivers, rng)
+        if hit["A"] != hit["B"]:
+            disagree += 1
+    assert disagree == 0
+
+
 def test_same_seed_same_quantiles() -> None:
     prog = program(
         [task("a", 4, demands=uses("st")), task("b", 4, "p2", demands=uses("st"))],

@@ -47,7 +47,8 @@ def test_solve_and_risk_on_a_chain() -> None:
         "/check",
         json={"program": _body(prog), "plan": solved.json()["result"], "moves": {"b": "2026-10-05"}},
     )
-    assert moved.status_code == 200 and moved.json()["hard"] >= 1
+    assert moved.status_code == 409 and moved.json()["detail"]["hard"] >= 1
+    assert moved.json()["detail"]["ok"] is False
     unknown = client.post(
         "/check", json={"program": _body(prog), "plan": solved.json()["result"], "moves": {"z": "2026-10-05"}}
     )

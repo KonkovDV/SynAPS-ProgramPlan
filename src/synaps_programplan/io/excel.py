@@ -69,7 +69,7 @@ _SHEETS: dict[str, list[str]] = {
     "Resources": ["id", "kind", "code", "name", "capacity_units", "skills", "org_unit"],
     "Skills": ["id", "code", "name"],
     "Exceptions": ["resource_id", "start", "end", "units_available", "reason"],
-    "Risks": ["id", "name", "probability", "low", "mode", "high", "task_ids", "owner"],
+    "Risks": ["id", "name", "probability", "low", "mode", "high", "task_ids", "owner", "group"],
 }
 
 
@@ -227,6 +227,7 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
                 high=_float(row, "high", default=1.5),
                 task_ids=[part.strip() for part in _text(row, "task_ids").split(";") if part.strip()],
                 owner=_opt(row, "owner") or "",
+                group=_opt(row, "group"),
             )
             for row in tables["Risks"]
         ],
@@ -341,6 +342,7 @@ def _rows(program: OKRProgram) -> dict[str, list[dict[str, Any]]]:
                 "high": r.high,
                 "task_ids": ";".join(r.task_ids),
                 "owner": r.owner,
+                "group": r.group,
             }
             for r in program.risk_drivers
         ],

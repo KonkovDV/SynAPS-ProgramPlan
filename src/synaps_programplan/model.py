@@ -272,6 +272,8 @@ class RiskDriver(_Strict):
     high: float = Field(default=1.5, gt=0)
     task_ids: list[str] = Field(min_length=1)
     owner: str = ""
+    # Drivers with the same group share one occurrence draw (comonotonic).
+    group: str | None = None
 
     @model_validator(mode="after")
     def _ordered(self) -> Self:

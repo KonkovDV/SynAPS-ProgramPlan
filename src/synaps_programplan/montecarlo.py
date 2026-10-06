@@ -10,9 +10,12 @@ duration 0, finished work does not move.
 
 P50/P80/P90 are sample quantiles of that scheme and ``on_time_share`` is a
 sample frequency; neither is a proved probability. Every hard link keeps its
-type and minimum lag; the upper bound of a max-lag link is not modelled. A
-task's criticality index is the share of draws in which resource-free CPM
-gives it no float. Driver ranking re-runs the same draws
+type and minimum lag. A draw whose earliest feasible start breaks a maximum
+lag is dropped (``scheduled_runs`` shrinks): the scheme does not re-optimise
+to repair it. Drivers that share a ``group`` use one common random number for
+occurrence, so a rarer driver in the group occurs only together with the more
+probable ones. A task's criticality index is the share of draws in which
+resource-free CPM gives it no float. Driver ranking re-runs the same draws
 (common random numbers) with one driver switched off and reports how many
 working days the P80 program finish gains.
 """
@@ -33,7 +36,7 @@ from synaps_programplan.result import PlanResult, TaskPlan
 _NOTE = (
     "Квантили и доли — выборка последовательного расписания при треугольных длительностях "
     "и драйверах риска на порядке принятого плана. Это не доказанная вероятность и не новый "
-    "оптимизированный план."
+    "оптимизированный план. Выборка, нарушившая максимальный лаг, в квантили не входит."
 )
 
 
@@ -301,8 +304,9 @@ def _run(
     for _ in range(runs):
         raw = _draw(rng, model.tasks, low_factor, high_factor)
         multiplier: dict[str, float] = defaultdict(lambda: 1.0)
+        occurrence = _occurrence_draws(drivers, rng)
         for driver in drivers:
-            hit = rng.random() < driver.probability
+            hit = occurrence[driver.id]
             factor = rng.triangular(driver.low, driver.high, driver.mode)
             if not hit:
                 continue
@@ -460,7 +464,39 @@ def _schedule(model: _Model, durations: dict[str, int]) -> dict[str, int] | None
             for day in range(start, start + duration):
                 row[day] -= units
         placed[task_id] = start
+    if not _within_max_lags(model, placed, durations):
+        return None
     return placed
+
+
+def _within_max_lags(model: _Model, placed: dict[str, int], durations: dict[str, int]) -> bool:
+    """Forward serial schedule vs maximum lags. A broken upper bound drops the draw."""
+    for edges in model.incoming.values():
+        for edge in edges:
+            if edge.max_lag_wd is None:
+                continue
+            src = edge.src_task_id
+            if model.tasks[src].status is TaskStatus.DONE or edge.dst_task_id not in placed:
+                continue
+            gap = placed[edge.dst_task_id] - placed[src]
+            limit = _anchor_offset(edge.type, durations[src], durations[edge.dst_task_id]) + edge.max_lag_wd
+            if gap > limit:
+                return False
+    return True
+
+
+def _occurrence_draws(drivers: list[RiskDriver], rng: random.Random) -> dict[str, bool]:
+    """One uniform per correlation group; ungrouped drivers draw their own.
+
+    Inside a group the same ``u`` is compared with each probability, so the
+    less probable driver never occurs unless every more probable one does.
+    """
+    group_draw: dict[str, float] = {}
+    occurred: dict[str, bool] = {}
+    for driver in drivers:
+        draw = group_draw.setdefault(driver.group, rng.random()) if driver.group else rng.random()
+        occurred[driver.id] = draw < driver.probability
+    return occurred
 
 
 def _fit(

@@ -46,7 +46,7 @@ Objective = Literal["due", "finish", "stability"]
 
 @dataclass(frozen=True)
 class SolveConfig:
-    solver: Literal["cpsat", "greedy"] = "cpsat"
+    solver: Literal["cpsat", "greedy", "alns", "rhc"] = "cpsat"
     time_limit_s: int = 20
     seed: int = 42
     objective: Objective = "finish"
@@ -55,17 +55,25 @@ class SolveConfig:
     compact: bool = True
 
     def solver_config(self) -> str:
-        return "GREED" if self.solver == "greedy" else "CPSAT-30"
+        return {
+            "greedy": "GREED",
+            "cpsat": "CPSAT-30",
+            "alns": "ALNS-300",
+            "rhc": "RHC-GREEDY",
+        }[self.solver]
 
     def solve_kwargs(self) -> dict[str, Any]:
         if self.solver == "greedy":
             return {}
-        return {
-            "time_limit_s": self.time_limit_s,
-            "random_seed": self.seed,
-            "objective_mode": "epsilon_primary",
-            "primary_objective": "tardiness",
-        }
+        if self.solver == "cpsat":
+            return {
+                "time_limit_s": self.time_limit_s,
+                "random_seed": self.seed,
+                "objective_mode": "epsilon_primary",
+                "primary_objective": "tardiness",
+            }
+        # ALNS and RHC are kernel heuristics. They do not prove optimality.
+        return {"time_limit_s": self.time_limit_s, "random_seed": self.seed}
 
 
 @dataclass
@@ -536,7 +544,7 @@ def _claim(status: SolverStatus, ok: bool, config: SolveConfig, solved: bool, *,
         return Claim.ERROR
     if not ok:
         return Claim.REJECTED
-    if config.solver == "greedy":
+    if config.solver != "cpsat":
         return Claim.HEURISTIC_FEASIBLE
     # OPTIMAL refers to the kernel objective on the compiled problem; the
     # left-shift can only improve it, so the claim survives compaction.
