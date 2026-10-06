@@ -3,6 +3,12 @@
 Append-only JSON Lines. Every record carries the hash of the previous record
 and its own hash over the canonical JSON, so a deleted, reordered or edited
 line breaks the chain and ``verify_journal`` reports where.
+
+A witness file next to the journal (``<journal>.head``) stores the record count
+and the hash of the last record. Cutting the tail or replacing the file with a
+fresh chain still verifies internally, but no longer matches the witness.
+Replacing both files is not detectable here: pass the last hash, copied
+somewhere the journal cannot rewrite, as ``anchor``.
 """
 
 from __future__ import annotations
@@ -24,10 +30,32 @@ def _digest(record: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def witness_path(path: Path) -> Path:
+    return path.with_name(path.name + ".head")
+
+
 def read_journal(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _read_witness(path: Path) -> dict[str, Any] | None:
+    witness = witness_path(path)
+    if not witness.exists():
+        return None
+    loaded = json.loads(witness.read_text(encoding="utf-8"))
+    if not isinstance(loaded, dict) or "records" not in loaded or "hash" not in loaded:
+        raise ValueError(f"{witness.name}: head witness is not a record count and a hash")
+    return loaded
+
+
+def _write_witness(path: Path, records: int, head: str) -> None:
+    witness = witness_path(path)
+    payload = {"records": records, "hash": head}
+    temporary = witness.with_name(witness.name + ".tmp")
+    temporary.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    temporary.replace(witness)
 
 
 def append_decision(
@@ -62,6 +90,7 @@ def append_decision(
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+    _write_witness(path, record["seq"], record["hash"])
     return record
 
 
@@ -76,7 +105,7 @@ class JournalCheck:
         return {"ok": self.ok, "records": self.records, "broken_at": self.broken_at, "reason": self.reason}
 
 
-def verify_journal(path: Path) -> JournalCheck:
+def _verify_chain(path: Path) -> JournalCheck:
     records = read_journal(path)
     previous = GENESIS
     for index, record in enumerate(records, start=1):
@@ -88,3 +117,51 @@ def verify_journal(path: Path) -> JournalCheck:
             return JournalCheck(False, len(records), index, "record content does not match its hash")
         previous = record["hash"]
     return JournalCheck(True, len(records))
+
+
+def verify_journal(path: Path, *, anchor: str | None = None) -> JournalCheck:
+    """Chain, then the head witness, then an optional hash stored outside the journal."""
+    check = _verify_chain(path)
+    if not check.ok:
+        return check
+    records = read_journal(path)
+    head = records[-1]["hash"] if records else GENESIS
+    try:
+        witness = _read_witness(path)
+    except ValueError as exc:
+        return JournalCheck(False, len(records), None, str(exc))
+    if records and witness is None:
+        return JournalCheck(False, len(records), None, "head witness is missing")
+    if witness is not None and (witness["records"] != len(records) or witness["hash"] != head):
+        return JournalCheck(
+            False,
+            len(records),
+            None,
+            "head witness does not match the journal (tail removed or file replaced)",
+        )
+    if anchor is not None and anchor != head:
+        return JournalCheck(False, len(records), None, "external anchor does not match the last record")
+    return check
+
+
+def seal_journal(path: Path) -> JournalCheck:
+    """Write the head witness for a chain that does not have one yet.
+
+    Refuses when a witness already exists and disagrees: sealing must not hide
+    a truncated or replaced journal.
+    """
+    check = _verify_chain(path)
+    if not check.ok:
+        return check
+    records = read_journal(path)
+    head = records[-1]["hash"] if records else GENESIS
+    witness = None
+    try:
+        witness = _read_witness(path)
+    except ValueError as exc:
+        return JournalCheck(False, len(records), None, str(exc))
+    if witness is not None and (witness["records"] != len(records) or witness["hash"] != head):
+        return JournalCheck(False, len(records), None, "refusing to seal over a witness that does not match")
+    if witness is None:
+        _write_witness(path, len(records), head)
+    return check

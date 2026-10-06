@@ -152,6 +152,125 @@ def test_journal_chain_detects_edits(tmp_path: Path) -> None:
     assert verify_journal(path).broken_at == 1
 
 
+def test_journal_witness_catches_a_cut_tail_and_a_replaced_file(tmp_path: Path) -> None:
+    path = tmp_path / "j.jsonl"
+    for action in ("accept", "reject"):
+        append_decision(
+            path,
+            action=action,
+            user="u",
+            role="manager",
+            scenario_id="A",
+            plan_hash="h",
+            input_hash="i",
+            reason="r",
+        )
+    head = read_journal(path)[-1]["hash"]
+    assert verify_journal(path, anchor=head).ok
+    lines = path.read_text(encoding="utf-8").splitlines()
+    path.write_text(lines[0] + "\n", encoding="utf-8")
+    cut = verify_journal(path)
+    assert not cut.ok and "witness" in cut.reason
+    other = tmp_path / "other.jsonl"
+    append_decision(
+        other,
+        action="accept",
+        user="u",
+        role="manager",
+        scenario_id="A",
+        plan_hash="h",
+        input_hash="i",
+        reason="fresh",
+    )
+    path.write_text(other.read_text(encoding="utf-8"), encoding="utf-8")
+    replaced = verify_journal(path)
+    assert not replaced.ok and "witness" in replaced.reason
+    assert not verify_journal(other, anchor=head).ok
+
+
+def test_seal_does_not_hide_a_truncated_journal(tmp_path: Path) -> None:
+    from synaps_programplan.journal import seal_journal
+
+    path = tmp_path / "j.jsonl"
+    append_decision(
+        path,
+        action="accept",
+        user="u",
+        role="manager",
+        scenario_id="A",
+        plan_hash="h",
+        input_hash="i",
+        reason="r",
+    )
+    path.write_text("", encoding="utf-8")
+    assert not seal_journal(path).ok
+
+
+def test_stable_churn_is_only_what_the_edit_reaches() -> None:
+    prog, accepted = _case()
+    repaired = repair_with_moves(prog, accepted, {"a": date(2026, 10, 12)}, SolveConfig(time_limit_s=5))
+    churn = repaired.metadata["replan"]["churn"]
+    assert churn["other"] == 0
+    assert churn["downstream"] >= 1
+    assert churn["moved"] == churn["pinned"] + churn["downstream"] + churn["resource"] + churn["other"]
+
+
+def test_proxy_identity_is_rejected_without_the_shared_secret(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("SYNAPS_PROGRAMPLAN_PROXY_SECRET", "s3cret")
+    prog, accepted = _case()
+    bench = Workbench(program=prog, plans=[accepted], journal=tmp_path / "j.jsonl")
+    client = TestClient(create_app(bench))
+    ignored = client.get("/api/data", headers={"X-Remote-User": "ivanov", "X-Remote-Role": "observer"})
+    assert ignored.status_code == 200 and ignored.json()["workbench"]["user"] == "local"
+    rejected = client.get(
+        "/api/data",
+        headers={"X-Synaps-Proxy-Secret": "nope", "X-Remote-User": "ivanov", "X-Remote-Role": "planner"},
+    )
+    assert rejected.status_code == 401
+    proxied = client.get(
+        "/api/data",
+        headers={"X-Synaps-Proxy-Secret": "s3cret", "X-Remote-User": "ivanov", "X-Remote-Role": "observer"},
+    )
+    assert proxied.status_code == 200
+    assert proxied.json()["workbench"]["user"] == "ivanov"
+    assert proxied.json()["workbench"]["role"] == "observer"
+    repair = client.post(
+        "/api/repair",
+        json={"scenario": accepted.scenario_id, "moves": {"a": "2026-10-12"}},
+        headers={"X-Synaps-Proxy-Secret": "s3cret", "X-Remote-User": "ivanov", "X-Remote-Role": "observer"},
+    )
+    assert repair.status_code == 403
+
+
+def test_workbench_refuses_a_journal_whose_witness_disagrees(tmp_path: Path) -> None:
+    prog, accepted = _case()
+    path = tmp_path / "j.jsonl"
+    append_decision(
+        path,
+        action="accept",
+        user="u",
+        role="manager",
+        scenario_id="A",
+        plan_hash="h",
+        input_hash="i",
+        reason="r",
+    )
+    path.write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="witness"):
+        Workbench(program=prog, plans=[accepted], journal=path)
+
+
+def test_non_loopback_bind_requires_roles_and_tls() -> None:
+    from synaps_programplan.workbench import exposure_refusal
+
+    assert exposure_refusal("127.0.0.1", authenticated=False, tls=False) is None
+    assert exposure_refusal("0.0.0.0", authenticated=False, tls=True) is not None
+    assert exposure_refusal("0.0.0.0", authenticated=True, tls=False) is not None
+    assert exposure_refusal("0.0.0.0", authenticated=True, tls=True) is None
+
+
 def test_tokens_map_to_roles() -> None:
     import hashlib
 

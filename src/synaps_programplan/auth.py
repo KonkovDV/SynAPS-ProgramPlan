@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 ENV = "SYNAPS_PROGRAMPLAN_TOKENS"
+PROXY_SECRET_ENV = "SYNAPS_PROGRAMPLAN_PROXY_SECRET"
 
 
 class Role(StrEnum):
@@ -92,3 +93,23 @@ class TokenStore:
 
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def proxy_principal(secret_header: str | None, user: str | None, role: str | None) -> Principal | None:
+    """Identity asserted by a reverse proxy that already did corporate sign-in.
+
+    The proxy must send ``X-Synaps-Proxy-Secret`` equal to
+    ``SYNAPS_PROGRAMPLAN_PROXY_SECRET`` together with ``X-Remote-User`` and
+    ``X-Remote-Role``. A user header without that secret is ignored by the
+    caller; a wrong secret is not a principal.
+    """
+    expected = os.environ.get(PROXY_SECRET_ENV)
+    if not expected or not secret_header or not hmac.compare_digest(expected, secret_header):
+        return None
+    if not user or not role:
+        return None
+    try:
+        parsed = Role(role)
+    except ValueError:
+        return None
+    return Principal(user=user, role=parsed)

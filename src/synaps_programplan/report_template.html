@@ -240,7 +240,8 @@ $("editDownload").addEventListener("click",()=>{const s=cur();const body={scenar
 $("editRepair").addEventListener("click",async()=>{const s=cur(),btn=$("editRepair");btn.disabled=true;$("editResult").insertAdjacentHTML("afterbegin",`<div class="small mute" id="repairing">Пересчёт: правки закреплены, остальные работы перестраиваются…</div>`);
  try{const r=await api("/api/repair",{method:"POST",body:JSON.stringify({scenario:s.id,moves:edits(),mode:$("editMode2").value})});EDIT[s.id]={};HIST[s.id]=[];const d=await api("/api/data");boot(d,r.scenario);
   const how=r.mode==="stable"?"с минимумом перестановок":r.requested_mode==="stable"?"с переоптимизацией сроков: без перестановок других работ правка невыполнима":"с переоптимизацией сроков";
-  $("editResult").innerHTML=`<div class="okbox">Новый вариант <b>${esc(r.scenario)}</b> построен ${esc(how)}, принят проверкой (${esc(r.claim)}) и добавлен в сравнение. Решение о нём — в разделе «Решение по варианту».</div>`}
+  const churn=r.churn?` Сдвинуто ${r.churn.moved} из ${r.churn.tasks}: ${r.churn.downstream} по связям за правкой, ${r.churn.resource} на общих ресурсах, ${r.churn.other} без связи с правкой.`:" ";
+  $("editResult").innerHTML=`<div class="okbox">Новый вариант <b>${esc(r.scenario)}</b> построен ${esc(how)}, принят проверкой (${esc(r.claim)}) и добавлен в сравнение.${churn} Решение о нём — в разделе «Решение по варианту».</div>`}
  catch(e){const el=$("repairing");if(el)el.remove();$("editResult").insertAdjacentHTML("afterbegin",`<div class="errbox">План с этими правками не принят: ${esc(e.message)}. Измените правки или отмените их.</div>`);btn.disabled=false}});
 
 /* ---- decisions journal (workbench only) ---- */

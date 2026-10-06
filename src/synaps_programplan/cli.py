@@ -318,36 +318,55 @@ def cmd_serve(args: argparse.Namespace) -> int:
         import uvicorn
 
         from synaps_programplan.auth import TokenStore
-        from synaps_programplan.workbench import LOOPBACK_HOSTS, Workbench, create_app
+        from synaps_programplan.workbench import Workbench, create_app, exposure_refusal
     except ImportError as exc:
         sys.stderr.write(f"SynAPS-ProgramPlan: serve needs the api extra (pip install .[api]): {exc}\n")
         return 2
     program = load_program(args.program)
     plans = [load_plan(path) for path in args.plans]
     tokens = TokenStore.from_env()
-    if not tokens.enabled and args.host not in LOOPBACK_HOSTS:
-        sys.stderr.write(
-            "SynAPS-ProgramPlan: without SYNAPS_PROGRAMPLAN_TOKENS the workbench listens on loopback only\n"
-        )
+    tls = bool(args.tls_cert or args.tls_key)
+    if tls and not (args.tls_cert and args.tls_key):
+        sys.stderr.write("SynAPS-ProgramPlan: TLS needs both --tls-cert and --tls-key\n")
         return 2
+    refusal = exposure_refusal(args.host, authenticated=tokens.enabled, tls=tls)
+    if refusal:
+        sys.stderr.write(f"SynAPS-ProgramPlan: {refusal}\n")
+        return 2
+    for label, path in (("certificate", args.tls_cert), ("key", args.tls_key)):
+        if path is not None and not path.is_file():
+            sys.stderr.write(f"SynAPS-ProgramPlan: TLS {label} not found: {path}\n")
+            return 2
     witness = json.loads(args.witness.read_text(encoding="utf-8")) if args.witness else None
-    bench = Workbench(
-        program=program,
-        plans=plans,
-        journal=args.journal,
-        save_dir=args.save_dir or args.journal.parent,
-        config=_config(args),
-        witness=witness,
-        risk=_risk_for(program, plans, args.risk_runs, None, args.seed),
-        tokens=tokens,
-    )
+    try:
+        bench = Workbench(
+            program=program,
+            plans=plans,
+            journal=args.journal,
+            save_dir=args.save_dir or args.journal.parent,
+            config=_config(args),
+            witness=witness,
+            risk=_risk_for(program, plans, args.risk_runs, None, args.seed),
+            tokens=tokens,
+        )
+    except ValueError as exc:
+        sys.stderr.write(f"SynAPS-ProgramPlan: {exc}\n")
+        return 2
     if bench.restored:
         sys.stderr.write(f"SynAPS-ProgramPlan: restored edited variants {', '.join(bench.restored)}\n")
+    scheme = "https" if tls else "http"
     sys.stderr.write(
-        f"SynAPS-ProgramPlan workbench: http://{args.host}:{args.port}/ "
+        f"SynAPS-ProgramPlan workbench: {scheme}://{args.host}:{args.port}/ "
         f"({'roles from SYNAPS_PROGRAMPLAN_TOKENS' if tokens.enabled else 'local mode, one planner'})\n"
     )
-    uvicorn.run(create_app(bench), host=args.host, port=args.port, log_level="warning")
+    uvicorn.run(
+        create_app(bench),
+        host=args.host,
+        port=args.port,
+        log_level="warning",
+        ssl_certfile=str(args.tls_cert) if args.tls_cert else None,
+        ssl_keyfile=str(args.tls_key) if args.tls_key else None,
+    )
     return 0
 
 
@@ -451,9 +470,18 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 
 def cmd_journal(args: argparse.Namespace) -> int:
-    check = verify_journal(args.journal)
+    from synaps_programplan.journal import seal_journal
+
+    check = seal_journal(args.journal) if args.seal else verify_journal(args.journal, anchor=args.anchor)
     records = read_journal(args.journal)
-    _print({"integrity": check.as_dict(), "records": records[-args.tail :] if args.tail else records})
+    head = records[-1]["hash"] if records and check.ok else None
+    _print(
+        {
+            "integrity": check.as_dict(),
+            "head": head,
+            "records": records[-args.tail :] if args.tail else records,
+        }
+    )
     return 0 if check.ok else 1
 
 
@@ -548,6 +576,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--journal", type=Path, default=Path("decisions.jsonl"))
     p.add_argument("--save-dir", type=Path, help="куда сохранять принятые варианты с правками")
+    p.add_argument("--tls-cert", type=Path, help="сертификат TLS; обязателен, если --host не локальный")
+    p.add_argument("--tls-key", type=Path, help="закрытый ключ TLS")
     p.add_argument("--witness", type=Path)
     p.add_argument("--risk-runs", type=int, default=0)
     _solve_args(p)
@@ -623,6 +653,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("journal", help="журнал решений: записи и проверка целостности цепочки")
     p.add_argument("journal", type=Path)
     p.add_argument("--tail", type=int, default=0)
+    p.add_argument("--anchor", help="хеш последней записи, сохранённый вне журнала")
+    p.add_argument("--seal", action="store_true", help="записать печать головной записи, если её ещё нет")
     p.set_defaults(func=cmd_journal)
 
     p = sub.add_parser("version")

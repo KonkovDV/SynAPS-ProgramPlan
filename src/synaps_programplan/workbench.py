@@ -29,14 +29,14 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from synaps_programplan.auth import Principal, TokenStore
+from synaps_programplan.auth import Principal, TokenStore, proxy_principal
 from synaps_programplan.checker import check_plan
 from synaps_programplan.conflicts import Analysis, analyze
 from synaps_programplan.edits import ReplanMode, check_moves, repair_with_moves
 from synaps_programplan.evidence import fingerprint
 from synaps_programplan.io import load_plan, save_plan
 from synaps_programplan.io.mspdi import write_plan_mspdi
-from synaps_programplan.journal import append_decision, read_journal, verify_journal
+from synaps_programplan.journal import append_decision, read_journal, verify_journal, witness_path
 from synaps_programplan.model import OKRProgram
 from synaps_programplan.montecarlo import RiskResult
 from synaps_programplan.planner import SolveConfig, plan_hash
@@ -45,6 +45,23 @@ from synaps_programplan.result import PlanResult, Severity
 from synaps_programplan.versions import NAME, VERSION
 
 LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "::1", "testserver"]
+
+
+def exposure_refusal(host: str, *, authenticated: bool, tls: bool) -> str | None:
+    """Why ``serve`` must refuse this bind, or None when it may listen.
+
+    Loopback needs nothing else. Any other address needs roles and TLS of its
+    own: a TLS-terminating proxy should keep this process on loopback.
+    """
+    if host in LOOPBACK_HOSTS:
+        return None
+    if not authenticated:
+        return "without SYNAPS_PROGRAMPLAN_TOKENS the workbench listens on loopback only"
+    if not tls:
+        return "a non-loopback address requires --tls-cert and --tls-key"
+    return None
+
+
 SECURITY_HEADERS = {
     "Content-Security-Policy": (
         "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
@@ -73,10 +90,14 @@ class Workbench:
     restored: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        if self.journal.exists() or witness_path(self.journal).exists():
+            check = verify_journal(self.journal)
+            if not check.ok:
+                raise ValueError(f"decision journal failed verification: {check.reason}")
         records = read_journal(self.journal)
         seen = [r.get("scenario_id") or "" for r in records] + [p.scenario_id for p in self.plans]
         self._edits = max([0, *(_edit_number(s) for s in seen)])
-        if self.save_dir is not None and verify_journal(self.journal).ok:
+        if self.save_dir is not None and records:
             self._restore(records)
 
     def _restore(self, records: list[dict[str, Any]]) -> None:
@@ -141,6 +162,17 @@ def _edit_number(scenario_id: str) -> int:
 
 def _principal(request: Request, authorization: Annotated[str | None, Header()] = None) -> Principal:
     bench: Workbench = request.app.state.bench
+    # A user header from a proxy counts only together with the shared secret.
+    # A secret that does not match is a rejection, not a fall-through to local mode.
+    if request.headers.get("x-synaps-proxy-secret") is not None:
+        proxied = proxy_principal(
+            request.headers.get("x-synaps-proxy-secret"),
+            request.headers.get("x-remote-user"),
+            request.headers.get("x-remote-role"),
+        )
+        if proxied is None:
+            raise HTTPException(status_code=401, detail="proxy authentication rejected")
+        return proxied
     token = None
     if authorization and authorization.lower().startswith("bearer "):
         token = authorization[7:].strip()
@@ -253,6 +285,7 @@ def create_app(bench: Workbench) -> FastAPI:
                     "claim": result.outcome.claim.value,
                     "mode": replan.get("mode", body.mode),
                     "requested_mode": body.mode,
+                    "churn": replan.get("churn"),
                 },
             )
         summary = {
@@ -262,6 +295,7 @@ def create_app(bench: Workbench) -> FastAPI:
             "detail": result.outcome.detail,
             "mode": replan.get("mode", body.mode),
             "requested_mode": body.mode,
+            "churn": replan.get("churn"),
         }
         if not result.outcome.ok:
             raise HTTPException(status_code=409, detail=summary)

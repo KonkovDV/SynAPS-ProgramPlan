@@ -10,6 +10,7 @@ by default with as few changes to the accepted plan as possible.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import replace
 from datetime import date
 from typing import Any, Literal
@@ -140,10 +141,85 @@ def repair_with_moves(
             adjustments=adjustments,
             warm_start=base,
         )
+    if result.outcome.ok and info["mode"] == "stable":
+        info["churn"] = classify_churn(program, base, result, set(moves))
     result.metadata["replan"] = info
     if result.outcome.ok:
         result.explanations = explain(program, result, adjustments=adjustments)
     return result
+
+
+def classify_churn(
+    program: OKRProgram, base: PlanResult, result: PlanResult, pinned: set[str]
+) -> dict[str, Any]:
+    """Split moved tasks by what the edit can actually force.
+
+    The affected set grows until it stops: hard-link successors of an affected
+    task, then every task that shares a resource or a skill with the set.
+    ``other`` is outside that set. A stable replan has no reason to move it,
+    and the pilot limit applies to this group, not to the successor chain.
+    """
+    base_start = {row.task_id: row.start_index for row in base.tasks}
+    moved = {row.task_id for row in result.tasks if base_start.get(row.task_id) != row.start_index}
+    downstream, resource = _affected(program, pinned)
+    downstream -= pinned
+    resource -= pinned | downstream
+    other = sorted(moved - pinned - downstream - resource)
+    return {
+        "tasks": len(result.tasks),
+        "moved": len(moved),
+        "pinned": len(pinned & moved),
+        "downstream": len(moved & downstream),
+        "resource": len(moved & resource),
+        "other": len(other),
+        "other_ids": other[:20],
+    }
+
+
+def _affected(program: OKRProgram, seeds: set[str]) -> tuple[set[str], set[str]]:
+    succ: dict[str, list[str]] = defaultdict(list)
+    for edge in program.dependencies:
+        if edge.hard:
+            succ[edge.src_task_id].append(edge.dst_task_id)
+    uses = _resource_keys(program)
+    affected = set(seeds)
+    downstream: set[str] = set()
+    resource: set[str] = set()
+    growing = True
+    while growing:
+        growing = False
+        stack = list(affected)
+        seen = set(affected)
+        while stack:
+            node = stack.pop()
+            for nxt in succ.get(node, []):
+                if nxt not in seen:
+                    seen.add(nxt)
+                    downstream.add(nxt)
+                    stack.append(nxt)
+                    growing = True
+        affected |= seen
+        hot: set[str] = set()
+        for task_id in affected:
+            hot.update(uses.get(task_id, ()))
+        for task_id, keys in uses.items():
+            if task_id not in affected and hot.intersection(keys):
+                affected.add(task_id)
+                resource.add(task_id)
+                growing = True
+    return downstream, resource
+
+
+def _resource_keys(program: OKRProgram) -> dict[str, tuple[str, ...]]:
+    out: dict[str, tuple[str, ...]] = {}
+    for task in program.tasks:
+        keys = [
+            f"resource:{demand.resource_id}" if demand.resource_id else f"skill:{demand.skill_id}"
+            for demand in task.demands
+            if demand.resource_id or demand.skill_id
+        ]
+        out[task.id] = tuple(keys)
+    return out
 
 
 def _stable_adjustments(

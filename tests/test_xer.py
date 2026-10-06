@@ -3,12 +3,14 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from synaps_programplan.cli import main
 from synaps_programplan.io import load_program
 from synaps_programplan.io.mspdi import ImportReport
 from synaps_programplan.io.xer import parse_xer, read_xer
 from synaps_programplan.merge import merge_projects
-from synaps_programplan.model import DependencySource, DependencyType, ResourceKind, TaskStatus
+from synaps_programplan.model import DependencySource, DependencyType, ResourceKind, TaskKind, TaskStatus
 from synaps_programplan.planner import SolveConfig, plan
 
 
@@ -118,6 +120,36 @@ def test_merged_program_shares_the_engineer_and_solves(tmp_path: Path) -> None:
     result = plan(merged, SolveConfig(time_limit_s=5))
     assert result.outcome.ok, result.outcome.detail
     assert result.task("OKR-B.B10").start > result.task("OKR-A.A30").finish
+
+
+def test_xer_written_by_an_independent_reader_is_imported(tmp_path: Path) -> None:
+    """MPXJ writes the XER dialect Primavera tools emit; the fixture is not hand-built."""
+    pytest.importorskip("mpxj")
+    pytest.importorskip("jpype")
+    import jpype
+
+    from tests.test_mspdi import _XML
+
+    xml = tmp_path / "okr.xml"
+    xml.write_text(_XML, encoding="utf-8")
+    if not jpype.isJVMStarted():
+        jpype.startJVM()
+    from org.mpxj.reader import UniversalProjectReader  # type: ignore[import-not-found]
+    from org.mpxj.writer import FileFormat, UniversalProjectWriter  # type: ignore[import-not-found]
+
+    project = UniversalProjectReader().read(str(xml))
+    xer = tmp_path / "okr.xer"
+    UniversalProjectWriter(FileFormat.XER).write(project, str(xer))
+    report = ImportReport()
+    projects, _cross = read_xer(xer, report=report)
+    assert len(projects) == 1
+    tasks = projects[0].tasks
+    assert any(t.duration_wd == 3 and t.kind is TaskKind.WORK for t in tasks)
+    # Primavera has no MS Project Deadline field; a zero-duration task arrives as a milestone.
+    assert any(t.kind is TaskKind.MILESTONE and t.duration_wd == 0 for t in tasks)
+    assert any("нулевой длительности" in note for note in report.notes)
+    assert any(d.type is DependencyType.FS and d.lag_wd == 0 for d in projects[0].dependencies)
+    assert projects[0].resources[0].capacity_units == 10
 
 
 def test_cli_imports_xer(tmp_path: Path) -> None:
