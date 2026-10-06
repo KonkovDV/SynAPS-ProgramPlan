@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>Учебный файл с непереносимым ограничением</Name>
+  <Title>ОКР «Изделие»</Title>
+  <MinutesPerDay>480</MinutesPerDay>
+  <StartDate>2026-10-05T08:00:00</StartDate>
+  <FinishDate>2026-10-30T18:00:00</FinishDate>
+  <Tasks>
+    <Task><UID>0</UID><Name>root</Name><Summary>1</Summary><OutlineLevel>0</OutlineLevel></Task>
+    <Task><UID>1</UID><Name>Работа как можно позже</Name><Summary>0</Summary><OutlineLevel>1</OutlineLevel>
+      <Start>2026-10-05T08:00:00</Start><Finish>2026-10-07T17:00:00</Finish>
+      <Duration>PT24H0M0S</Duration><Milestone>0</Milestone>
+      <ConstraintType>1</ConstraintType><ConstraintDate>2026-10-20T08:00:00</ConstraintDate></Task>
+  </Tasks>
+</Project>

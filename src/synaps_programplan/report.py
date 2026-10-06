@@ -69,6 +69,7 @@ def report_data(
                     "project": row.project_id,
                     "wbs": tasks[row.task_id].wbs_id,
                     "name": row.name,
+                    "article": _article_code(program, tasks[row.task_id].test_article_id),
                     "start": row.start.isoformat(),
                     "finish": row.finish.isoformat(),
                     "duration": row.duration_wd,
@@ -165,6 +166,15 @@ def _risk(risk: RiskResult, tasks: dict[str, Any]) -> dict[str, Any]:
         for item in risk.milestone_risk
     ]
     return payload
+
+
+def _article_code(program: OKRProgram, article_id: str | None) -> str | None:
+    if article_id is None:
+        return None
+    for article in program.articles:
+        if article.id == article_id:
+            return article.code
+    return article_id
 
 
 def _iso(value: date | None) -> str | None:

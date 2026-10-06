@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 from synaps_programplan.checker import check_plan
 from synaps_programplan.conflicts import analyze
+from synaps_programplan.copilot import ask, facts_of, yandex_complete, yandex_settings
 from synaps_programplan.disrupt import Disruption, apply_disruption, roll_forward
 from synaps_programplan.edits import check_moves, repair_with_moves
 from synaps_programplan.evidence import fingerprint
@@ -276,6 +277,35 @@ def cmd_explain(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ask(args: argparse.Namespace) -> int:
+    """A note from Yandex Cloud, citing facts of an accepted plan. Off unless configured."""
+    program = load_program(args.program)
+    result = load_plan(args.plan)
+    rejected = attestation_error(program, result)
+    if rejected:
+        _print({"error": rejected})
+        return 1
+    settings = yandex_settings()
+    if settings is None:
+        sys.stderr.write(
+            "SynAPS-ProgramPlan: языковая модель выключена. "
+            "Чтобы отправить факты принятого плана в Yandex Cloud, задайте "
+            "SYNAPS_PROGRAMPLAN_YANDEX_API_KEY и SYNAPS_PROGRAMPLAN_YANDEX_FOLDER.\n"
+        )
+        return 2
+    key, folder, model = settings
+    facts = facts_of(program, result)
+    answer = ask(args.question, facts, lambda messages: yandex_complete(key, folder, model, messages))
+    _print(
+        {
+            "model": f"gpt://{folder}/{model}/latest",
+            "statements": [{"text": row.text, "fact_ids": row.fact_ids} for row in answer.statements],
+            "dropped": answer.dropped,
+        }
+    )
+    return 0 if answer.statements else 2
+
+
 def cmd_witness(args: argparse.Namespace) -> int:
     program = load_program(args.program)
     witness = infeasibility_witness(program, time_limit_s=args.time_limit)
@@ -456,7 +486,14 @@ def cmd_demo(args: argparse.Namespace) -> int:
     """One command: synthetic program -> analysis -> scenarios -> explanations -> report."""
     out: Path = args.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    program = generate(SyntheticSpec(projects=args.projects, seed=args.seed, deadline_slack=3.0))
+    program = generate(
+        SyntheticSpec(
+            projects=args.projects,
+            seed=args.seed,
+            deadline_slack=3.0,
+            enterprises=("Конструкторское бюро", "Опытный завод", "Испытательная станция", "Серийный завод"),
+        )
+    )
     save_program(program, out / "program.json")
     analysis = analyze(program)
     config = SolveConfig(time_limit_s=args.time_limit, seed=args.seed)
@@ -632,6 +669,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--counterfactuals", type=int, default=3)
     p.add_argument("--out", type=Path)
     p.set_defaults(func=cmd_explain)
+
+    p = sub.add_parser(
+        "ask",
+        help="записка по фактам принятого плана; модель Яндекса выключена, пока не заданы ключ и каталог",
+    )
+    p.add_argument("program", type=Path)
+    p.add_argument("plan", type=Path)
+    p.add_argument("--question", required=True)
+    p.set_defaults(func=cmd_ask)
 
     p = sub.add_parser("witness", help="почему программа невыполнима")
     p.add_argument("program", type=Path)

@@ -63,6 +63,8 @@ SynAPS-ProgramPlan journal decisions.jsonl --anchor <хеш>
 
 Данные заказчика в репозиторий и в каталог поставки не кладут. В поле `provenance` программы для них указывают `customer_anonymized`.
 
+В закрытом контуре не задают `SYNAPS_PROGRAMPLAN_YANDEX_API_KEY` и `SYNAPS_PROGRAMPLAN_YANDEX_FOLDER`. Тогда команда `ask` завершается без обращения в сеть. Расчёт плана эти переменные не использует. На показе их тоже не задают.
+
 ## 5. Обновление
 
 Новая поставка — новый коммит ядра в `requirements.lock` и новый `sbom.cdx.json`, затем полный прогон `python -m pytest tests` и `python scripts/lint_claims.py` на машине сборки. На контуре ставят только собранный wheelhouse.

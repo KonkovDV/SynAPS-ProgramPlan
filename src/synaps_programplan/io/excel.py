@@ -1,7 +1,8 @@
 """Excel workbook for one consolidated program (plan section T1.3).
 
 Sheets: Program, Projects, WBS, Tasks, Demands, Dependencies, Resources, Skills,
-Exceptions, Risks (optional). Dates are ISO ``YYYY-MM-DD``. Several skills in one cell are
+Exceptions, Risks, Products, Configurations, Articles (the last four are optional).
+Dates are ISO ``YYYY-MM-DD``. Several skills in one cell are
 separated by ``;``. An empty id cell or a row whose first cell starts with
 ``#`` is skipped, so the template can carry a comment row.
 """
@@ -25,6 +26,8 @@ from synaps_programplan.model import (
     DependencyType,
     ExceptionReason,
     OKRProgram,
+    Product,
+    ProductConfiguration,
     Program,
     Project,
     Provenance,
@@ -36,6 +39,7 @@ from synaps_programplan.model import (
     Task,
     TaskKind,
     TaskStatus,
+    TestArticle,
     WBSKind,
     WBSNode,
 )
@@ -85,7 +89,13 @@ _SHEETS: dict[str, list[str]] = {
         "planned_start",
         "planned_finish",
         "okr_stage",
+        "product_id",
+        "configuration_id",
+        "test_article_id",
     ],
+    "Products": ["id", "project_id", "code", "name"],
+    "Configurations": ["id", "product_id", "code", "name"],
+    "Articles": ["id", "configuration_id", "code", "name", "resource_id"],
     "Demands": ["task_id", "resource_id", "skill_id", "units"],
     "Dependencies": ["src_task_id", "dst_task_id", "type", "lag_wd", "max_lag_wd", "hard", "source"],
     "Resources": ["id", "kind", "code", "name", "capacity_units", "skills", "org_unit"],
@@ -167,6 +177,9 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
                 planned_start=_date(row, "planned_start"),
                 planned_finish=_date(row, "planned_finish"),
                 okr_stage=_opt(row, "okr_stage"),
+                product_id=_opt(row, "product_id"),
+                configuration_id=_opt(row, "configuration_id"),
+                test_article_id=_opt(row, "test_article_id"),
             )
         )
     return OKRProgram(
@@ -255,6 +268,34 @@ def read_excel(path: Path, *, provenance: Provenance | None = None) -> OKRProgra
             )
             for row in tables["Risks"]
         ],
+        products=[
+            Product(
+                id=_text(row, "id"),
+                project_id=_text(row, "project_id"),
+                code=_opt(row, "code") or _text(row, "id"),
+                name=_text(row, "name"),
+            )
+            for row in tables["Products"]
+        ],
+        configurations=[
+            ProductConfiguration(
+                id=_text(row, "id"),
+                product_id=_text(row, "product_id"),
+                code=_opt(row, "code") or _text(row, "id"),
+                name=_text(row, "name"),
+            )
+            for row in tables["Configurations"]
+        ],
+        articles=[
+            TestArticle(
+                id=_text(row, "id"),
+                configuration_id=_text(row, "configuration_id"),
+                code=_opt(row, "code") or _text(row, "id"),
+                name=_text(row, "name"),
+                resource_id=_text(row, "resource_id"),
+            )
+            for row in tables["Articles"]
+        ],
         provenance=provenance or Provenance(kind=ProvenanceKind.EXPERIMENT, source=path.name),
     )
 
@@ -314,6 +355,9 @@ def _rows(program: OKRProgram) -> dict[str, list[dict[str, Any]]]:
                 "planned_start": t.planned_start,
                 "planned_finish": t.planned_finish,
                 "okr_stage": t.okr_stage,
+                "product_id": t.product_id,
+                "configuration_id": t.configuration_id,
+                "test_article_id": t.test_article_id,
             }
             for t in program.tasks
         ],
@@ -370,6 +414,24 @@ def _rows(program: OKRProgram) -> dict[str, list[dict[str, Any]]]:
                 "group": r.group,
             }
             for r in program.risk_drivers
+        ],
+        "Products": [
+            {"id": row.id, "project_id": row.project_id, "code": row.code, "name": row.name}
+            for row in program.products
+        ],
+        "Configurations": [
+            {"id": row.id, "product_id": row.product_id, "code": row.code, "name": row.name}
+            for row in program.configurations
+        ],
+        "Articles": [
+            {
+                "id": row.id,
+                "configuration_id": row.configuration_id,
+                "code": row.code,
+                "name": row.name,
+                "resource_id": row.resource_id,
+            }
+            for row in program.articles
         ],
     }
 

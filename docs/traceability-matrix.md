@@ -27,6 +27,8 @@
 | Решения прослеживаемы | Журнал с хеш-цепочкой, пользователем, ролью, хешем плана и входа | `test_journal_chain_detects_edits`, `test_report_with_risk_and_journal_command` |
 | Нет утверждений вне реестра | `CLAIMS_REGISTRY.md`, `BANNED_CLAIMS.txt` | `scripts/lint_claims.py` в CI |
 | Противоречивые максимальные задержки, имена в отчёте, чужой HTTP | Проверка цикла не прерывается раньше Беллмана–Форда; JSON отчёта экранирует `<`, `>` и `&`; вычислительный HTTP с чужого адреса отвечает только по HTTPS | `test_each_link_type_rejects_a_proven_positive_cycle`, `test_imported_names_cannot_close_the_report_script`, `test_remote_bearer_over_plain_http_is_refused` |
+| Изделие и опытный экземпляр | Экземпляр ссылается на ресурс ёмкости 1, работа его занимает; два испытания одного экземпляра не пересекаются | `test_one_prototype_cannot_take_two_tests_at_once`, `test_a_named_article_must_be_occupied` |
+| Записка языковой модели | `ask` выключена без ключа и каталога; читает только принятый план; фраза без известного факта отбрасывается | `test_yandex_is_off_without_a_key`, `test_an_unaccepted_plan_is_not_read`, `test_a_statement_without_a_known_fact_is_dropped` |
 
 ## Ожидаемый эффект заказчика
 

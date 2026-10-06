@@ -151,6 +151,9 @@ class Task(_Strict):
     baseline_start: date | None = None
     baseline_finish: date | None = None
     okr_stage: str | None = None
+    product_id: str | None = None
+    configuration_id: str | None = None
+    test_article_id: str | None = None
     deliverable: str | None = None
     acceptance_doc: str | None = None
     domain_attributes: dict[str, Any] = Field(default_factory=dict)
@@ -231,6 +234,34 @@ class Skill(_Strict):
     id: str
     code: str
     name: str
+
+
+class Product(_Strict):
+    """An engine or another article family inside one OKR."""
+
+    id: str
+    project_id: str
+    code: str
+    name: str
+
+
+class ProductConfiguration(_Strict):
+    """One design configuration of a product."""
+
+    id: str
+    product_id: str
+    code: str
+    name: str
+
+
+class TestArticle(_Strict):
+    """One physical prototype. It occupies ``resource_id``, which must have capacity 1."""
+
+    id: str
+    configuration_id: str
+    code: str
+    name: str
+    resource_id: str
 
 
 class ExceptionReason(StrEnum):
@@ -322,6 +353,9 @@ class OKRProgram(_Strict):
     dependencies: list[Dependency] = Field(default_factory=list)
     resources: list[Resource] = Field(default_factory=list)
     skills: list[Skill] = Field(default_factory=list)
+    products: list[Product] = Field(default_factory=list)
+    configurations: list[ProductConfiguration] = Field(default_factory=list)
+    articles: list[TestArticle] = Field(default_factory=list)
     capacity_exceptions: list[CapacityException] = Field(default_factory=list)
     baseline: Baseline | None = None
     freeze: FreezePolicy = Field(default_factory=FreezePolicy)
@@ -401,6 +435,7 @@ class OKRProgram(_Strict):
             for task_id in driver.task_ids:
                 if task_id not in tasks:
                     issues.append(f"risk driver {driver.id} references unknown task {task_id}")
+        _identity_issues(issues, self, projects, tasks, resources)
         if issues:
             raise ValueError("; ".join(issues))
         issues.extend(_graph_issues(self))
@@ -464,6 +499,76 @@ def _task_refs(
                 )
         if demand.skill_id is not None and demand.skill_id not in skills:
             issues.append(f"task {task.id} demands unknown skill {demand.skill_id}")
+
+
+def _identity_issues(
+    issues: list[str],
+    program: OKRProgram,
+    projects: set[str],
+    tasks: dict[str, Task],
+    resources: dict[str, Resource],
+) -> None:
+    """Product, configuration and prototype must point at each other, and the prototype is exclusive."""
+    _unique(issues, "product", [row.id for row in program.products])
+    _unique(issues, "configuration", [row.id for row in program.configurations])
+    _unique(issues, "test article", [row.id for row in program.articles])
+    products = {row.id: row for row in program.products}
+    configurations = {row.id: row for row in program.configurations}
+    articles = {row.id: row for row in program.articles}
+    for product in program.products:
+        if product.project_id not in projects:
+            issues.append(f"product {product.id} references unknown project {product.project_id}")
+    for row in program.configurations:
+        if row.product_id not in products:
+            issues.append(f"configuration {row.id} references unknown product {row.product_id}")
+    for article in program.articles:
+        owner = configurations.get(article.configuration_id)
+        if owner is None:
+            issues.append(
+                f"test article {article.id} references unknown configuration {article.configuration_id}"
+            )
+        resource = resources.get(article.resource_id)
+        if resource is None:
+            issues.append(f"test article {article.id} references unknown resource {article.resource_id}")
+        elif resource.capacity_units != 1:
+            issues.append(f"test article {article.id} resource {article.resource_id} must have capacity 1")
+    for task in tasks.values():
+        chosen_product = products.get(task.product_id) if task.product_id else None
+        if task.product_id and chosen_product is None:
+            issues.append(f"task {task.id} references unknown product {task.product_id}")
+        elif chosen_product is not None and chosen_product.project_id != task.project_id:
+            issues.append(f"task {task.id} product {chosen_product.id} belongs to another project")
+        chosen_configuration = configurations.get(task.configuration_id) if task.configuration_id else None
+        if task.configuration_id and chosen_configuration is None:
+            issues.append(f"task {task.id} references unknown configuration {task.configuration_id}")
+        elif (
+            chosen_configuration is not None
+            and chosen_product is not None
+            and chosen_configuration.product_id != chosen_product.id
+        ):
+            issues.append(
+                f"task {task.id} configuration {chosen_configuration.id} belongs to another product"
+            )
+        if task.test_article_id is None:
+            continue
+        named = articles.get(task.test_article_id)
+        if named is None:
+            issues.append(f"task {task.id} references unknown test article {task.test_article_id}")
+            continue
+        named_configuration = configurations.get(named.configuration_id)
+        family = products.get(named_configuration.product_id) if named_configuration is not None else None
+        if family is not None and family.project_id != task.project_id:
+            issues.append(f"task {task.id} test article {named.id} belongs to another project")
+        if chosen_configuration is not None and named.configuration_id != chosen_configuration.id:
+            issues.append(
+                f"task {task.id} configuration {chosen_configuration.id} does not match article {named.id}"
+            )
+        occupied = any(demand.resource_id == named.resource_id for demand in task.demands)
+        if not occupied:
+            issues.append(
+                f"task {task.id} names test article {named.id} "
+                f"but does not occupy resource {named.resource_id}"
+            )
 
 
 def skill_pool_conflicts(program: OKRProgram) -> list[str]:

@@ -405,6 +405,8 @@ def write_plan_mspdi(
         ("Name", program.program.name),
         ("Title", program.program.name),
         ("MinutesPerDay", minutes_per_day),
+        ("StartDate", f"{program.program.horizon_start}T09:00:00"),
+        ("FinishDate", f"{program.program.horizon_end}T18:00:00"),
         ("StatusDate", f"{program.program.planning_start}T09:00:00"),
     ):
         ET.SubElement(root, _q(tag)).text = str(value)

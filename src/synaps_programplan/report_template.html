@@ -111,13 +111,15 @@ async function api(path,opts={},raw=false){const h=Object.assign({"Content-Type"
  return body}
 function save(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 
+const PROV={synthetic:"учебные",open_data:"открытые",customer_anonymized:"обезличенные",experiment:"эксперимент"};
 function boot(data,pick){D=data;
  projColor={};D.projects.forEach((p,i)=>projColor[p.id]=PCOL[i%PCOL.length]);
  projName=Object.fromEntries(D.projects.map(p=>[p.id,p.code]));resName=Object.fromEntries(D.resources.map(r=>[r.id,r.code]));
- $("sub").textContent=`Дата статуса ${fmt(D.program.status_date)} · данные: ${D.program.provenance} · SynAPS-ProgramPlan ${D.versions.version} · SynAPS ${String(D.versions.synaps).slice(0,12)} · TRL ${D.versions.trl} (${D.versions.claim_level})`+(WB()?` · рабочее место: ${WB().user} (${WB().role})`:"");
+ $("sub").textContent=`Дата статуса ${fmt(D.program.status_date)} · данные: ${PROV[D.program.provenance]||D.program.provenance} · SynAPS-ProgramPlan ${D.versions.version} · ядро SynAPS ${String(D.versions.synaps).slice(0,12)} · лабораторный прототип, подтверждённый уровень ${D.versions.trl}`+(WB()?` · рабочее место: ${WB().user} (${WB().role})`:"");
  banner();cmp();
  const okScen=D.scenarios.filter(s=>s.ok);
- $("scenario").innerHTML=D.scenarios.map(s=>`<option value="${esc(s.id)}" ${s.ok?"":"disabled"}>${esc(s.label)}${s.ok?"":" — "+s.claim}</option>`).join("");
+ const scenNote=s=>s.ok?"":(s.claim==="FEASIBLE"||s.claim==="OPTIMAL"||s.claim==="HEURISTIC_FEASIBLE"?" — только в таблице":" — "+s.claim);
+ $("scenario").innerHTML=D.scenarios.map(s=>`<option value="${esc(s.id)}" ${s.ok?"":"disabled"}>${esc(s.label)}${scenNote(s)}</option>`).join("");
  if(okScen.length)$("scenario").value=pick&&okScen.some(s=>s.id===pick)?pick:okScen[0].id;
  $("proj").innerHTML=`<option value="">все</option>`+D.projects.map(p=>`<option value="${esc(p.id)}">${esc(p.code)} — ${esc(p.name)}</option>`).join("");
  const plants=[...new Set(D.projects.map(p=>p.enterprise).filter(Boolean))];
@@ -130,7 +132,7 @@ function boot(data,pick){D=data;
  risk();conf();all();if(WB())journal()}
 function banner(){let h="";
  if(D.provisional_years.length)h+=`<div class="warnbox">Производственный календарь на ${D.provisional_years.join(", ")} не утверждён постановлением Правительства РФ — использовано правило ст. 112 ТК РФ (предварительно).</div>`;
- if(D.program.provenance!=="customer_anonymized")h+=`<div class="warnbox">Данные программы: ${esc(D.program.provenance)}. Результаты не являются результатами на данных заказчика.</div>`;
+ if(D.program.provenance!=="customer_anonymized")h+=`<div class="warnbox">Данные: ${esc(PROV[D.program.provenance]||D.program.provenance)}. Это не расчёт по файлам заказчика.</div>`;
  if(D.witness&&D.witness.infeasible)h+=`<div class="warnbox"><b>Программа невыполнима при текущих требованиях.</b> ${esc(D.witness.text)}<ul>${(D.witness.witness||[]).map(w=>`<li>${esc(w.text)}${w.suggestion?" → "+esc(w.suggestion):""}</li>`).join("")}</ul>${D.witness.minimal?"":"<span class='mute'>(набор может быть не минимальным: часть проверок не завершилась за лимит времени)</span>"}</div>`;
  h+=`<div class="small mute">План публикуется только если решатель вернул допустимое решение, проверка ядра SynAPS чиста и независимая доменная проверка не нашла жёстких нарушений. Ручные правки проверяются той же независимой проверкой.</div>`;
  $("banner").innerHTML=h}
@@ -217,7 +219,7 @@ function gantt(){const s=cur(),box=$("gantt");if(!s){box.innerHTML="";return}
  visible.forEach(({row:r,i})=>{const y=HH+i*RH;if(r.hdr){const mark=closed[r.fold]?"▸":"▾";svg+=`<rect x="0" y="${y}" width="${W}" height="${RH}" fill="${r.stage?"#f7f8fa":"#f2f4f7"}"/><text x="${r.stage?16:6}" y="${y+14}" data-fold="${esc(r.fold)}" style="font-weight:700;cursor:pointer">${mark} ${esc(r.hdr.code)} — ${esc(r.hdr.name)}</text>`;
    if(r.hdr.deadline){const x=LW+X(r.hdr.deadline);svg+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${H}" stroke="var(--crit)" stroke-width="1" stroke-dasharray="2 3" opacity=".6"/>`}return}
   const t=r.t,c=t.critical?"var(--crit)":projColor[t.project],lbl=t.name.length>44?t.name.slice(0,43)+"…":t.name;
-  svg+=`<text x="14" y="${y+14}" data-id="${esc(t.id)}"${t.edited?" style='font-weight:700'":""}>${t.edited?"✎ ":""}${esc(lbl)}</text>`;
+  svg+=`<text x="14" y="${y+14}" data-id="${esc(t.id)}"${t.edited?" style='font-weight:700'":""}>${t.edited?"✎ ":""}${esc(lbl)}${t.article?" · "+esc(t.article):""}</text>`;
   if(base&&t.ref_start){const a=LW+X(t.ref_start),b=LW+X(t.ref_finish)+(t.milestone?0:pxd);svg+=t.milestone?`<path d="M${a} ${y+14}l4 4-4 4-4-4z" fill="var(--base)"/>`:`<rect x="${a}" y="${y+13}" width="${Math.max(2,b-a)}" height="4" fill="var(--base)"/>`}
   if(t.edited){const o=t.orig,a=LW+X(o.start),b=LW+X(o.finish)+(o.milestone?0:pxd);svg+=o.milestone?`<path d="M${a} ${y+2}l6 7-6 7-6-7z" fill="none" stroke="#9aa3b2" stroke-dasharray="2 2"/>`:`<rect x="${a}" y="${y+3}" width="${Math.max(2,b-a)}" height="10" rx="2" fill="none" stroke="#9aa3b2" stroke-dasharray="2 2"/>`}
   const a=LW+X(t.start),b=LW+X(t.finish)+(t.milestone?0:pxd);pos[t.id]={a,b,y:y+8};

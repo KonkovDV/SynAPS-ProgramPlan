@@ -101,6 +101,20 @@ def test_export_writes_baseline_zero(tmp_path: Path) -> None:
     assert row.baseline_finish == result.task("a").reference_finish
 
 
+def test_exported_plan_imports_back_as_a_program(tmp_path: Path) -> None:
+    from synaps_programplan.merge import merge_projects
+    from tests.conftest import program, task
+
+    prog = program([task("a", 3, planned_start=date(2026, 10, 5), planned_finish=date(2026, 10, 7))])
+    result = plan(prog, SolveConfig(time_limit_s=10))
+    assert result.outcome.ok
+    out = tmp_path / "plan.xml"
+    write_plan_mspdi(prog, result, out)
+    project = read_mspdi(out, code="p1", report=ImportReport())
+    loaded, _merge = merge_projects([project], program_id="prog", name="test")
+    assert loaded.program.horizon_start <= loaded.program.status_date <= loaded.program.horizon_end
+
+
 def test_plan_roundtrip_mspdi(tmp_path: Path) -> None:
     from tests.conftest import dep, program, task
 

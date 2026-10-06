@@ -39,21 +39,21 @@ The scheduler has been measured on the public sets used by research groups and s
 | RCPSP/max j10, j20, j30 | 810 | Start-to-start links, minimum and maximum lags. Every instance known to be infeasible is proved infeasible. Known optima match on every instance except one |
 | Study programmes | 3 sizes | Up to 64 projects and 2,688 activities. A plan is accepted at every size. CP-SAT cuts the greedy plan's total tardiness by 54%, 45% and 28% |
 
-Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 148.
+Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 159.
 
 ## What the programme manager gets
 
 | Requirement | How it is met |
 |---|---|
 | **F1. One plan** from the plans of the separate projects | MS Project files (XML, and MPP or MPX through the MPXJ library), Primavera P6 XER exports with several projects in one file, and an Excel workbook. Resources that share a name across files become shared. A stand that is spelled differently in two files is joined by a name table. Cross-project links for MS Project come from a CSV table. Anything the import did not carry across exactly is listed in a report with a code. In strict mode a programme with a loss is not written |
-| **F2. Links, milestones, dates and constraints** | Four link types, with lag and maximum lag. Milestones. Mandated and planned dates. A shift limit, pinning, and a freeze on the near weeks. Leave and stand maintenance. The Russian production calendar from the government decrees for 2025–2027 |
+| **F2. Links, milestones, dates and constraints** | Four link types, with lag and maximum lag. Milestones. Mandated and planned dates. A shift limit, pinning, and a freeze on the near weeks. Leave and stand maintenance. The Russian production calendar from the government decrees for 2025–2027. A task may name a product, a configuration and a prototype: the prototype occupies a resource of capacity 1, so its tests run one after another |
 | **F3. Conflicts and schedule risk** | Before the solve: overloads, projects competing for one resource, broken links, impossible and tight dates, faults in the source data. After the solve: P50, P80 and P90 for the programme and for each milestone, the share of samples in which the milestone is on time, task criticality, and a risk register with the working days each risk adds to P80 |
 | **F4. Alternative plans** | Deadlines, resource reserve, stability, balance, project priority, what-if (add a stand, move a milestone, drop a project, lengthen a task) and a plan that keeps the planner's edits. All of them sit in one comparison table; identical plans are collapsed |
-| **F5. Gantt, loading, critical work, reasons for change** | The report opens in a browser with no network. The planner's desk: a Gantt chart, drag and keyboard edits, an immediate check, a reschedule that moves as little as possible, a loading heatmap, a reason for every move, decisions with a written justification in the journal, user roles, and an export of the accepted plan back to MS Project |
+| **F5. Gantt, loading, critical work, reasons for change** | The report opens in a browser with no network. The planner's desk: a Gantt chart, drag and keyboard edits, an immediate check, a reschedule that moves as little as possible, a loading heatmap, a reason for every move, decisions with a written justification in the journal, user roles, and an export of the accepted plan back to MS Project. A project or a stage folds, the chart filters by plant and resource, the original dates stay visible, and a milestone with a P80 estimate carries a green or a red dot |
 
 Which module and which test covers each requirement is in [`docs/traceability-matrix.md`](docs/traceability-matrix.md). The guides are in Russian.
 
-![Planner's desk: dragging a task and the immediate check](docs/img/workbench-edit.png)
+![Planner's desk: edit mode on the Gantt chart](docs/img/workbench-edit.png)
 
 ## Why a plan can be trusted
 
@@ -84,17 +84,25 @@ Python 3.12 or newer.
 
 ```text
 pip install "SynAPS-ProgramPlan[api] @ git+https://github.com/KonkovDV/SynAPS-ProgramPlan.git"
-SynAPS-ProgramPlan demo --out-dir out/demo
-SynAPS-ProgramPlan serve out/demo/program.json out/demo/plan_A.json out/demo/plan_D.json --journal out/demo/decisions.jsonl --risk-runs 200
+SynAPS-ProgramPlan demo --projects 4 --time-limit 8 --risk-runs 40 --out-dir out/demo
+SynAPS-ProgramPlan serve out/demo/program.json out/demo/plan_A.json out/demo/plan_D.json --journal out/demo/decisions.jsonl --risk-runs 40
 ```
 
-`demo` spends one to three minutes building a study programme of four projects with shared stands, specialists and a risk register, solves the alternatives and writes `out/demo`:
+`demo` spends about a minute building the demonstration in the next section. `serve` opens the planner's desk at `http://127.0.0.1:8765/`. It is the same report, and from it you edit the plan, reschedule, record a decision and keep the journal.
 
-- `report.html` — the comparison, with the risk section;
-- `report_infeasible.html` — a programme whose deadline cannot be met, with the conflicting requirements;
-- `program.json`, `plan_*.json`, `risk_A.json` — the input, the plans with their hashes, and the risk estimate.
+## Demonstration
 
-`serve` opens the planner's desk at `http://127.0.0.1:8765/`. It is the same report, and from it you edit the plan, reschedule, record a decision and keep the journal.
+A study programme of four projects across four invented sites: a design bureau, a pilot plant, a test station and a series plant. The report header says the data are a study set and the confirmed level is 4. The effect named in the request is measured on the pilot. The language model stays off and does not use the network.
+
+The command above writes `out/demo` (the directory is not in git):
+
+- `report.html` — the comparison, the chart, loading, reasons for moves, conflicts before the solve, and risk;
+- `report_infeasible.html` — a programme whose deadline cannot be met, with no consolidated-plan dates;
+- `program.json`, `plan_*.json`, `plan.xml`, `risk_A.json` — the programme, the plans with their hashes, the MS Project export and the risk estimate.
+
+Open both HTML files before the meeting. The order of the screens and the MS Project round trip are in the [demonstration script](docs/acceptance/demo-script.md) (Russian). Running the command again with a different time limit produces a different plan: keep the files built by this command.
+
+On this build the Deadlines alternative is accepted: programme finish 23 August 2028, milestone tardiness 139 working days, 71 tasks moved. The P80 of the programme finish is 9 March 2029. A second stand and a programme without one project appear in the comparison table: they were solved on a changed programme, so their bars are not drawn on the chart of the original one. The menu marks them «только в таблице». The infeasible page names one requirement: the mandated date of project 4's certification milestone, 14 December 2027.
 
 ## The working cycle
 
@@ -109,13 +117,13 @@ SynAPS-ProgramPlan serve out/demo/program.json out/demo/plan_A.json out/demo/pla
 | 7. Report | `SynAPS-ProgramPlan report program.json out/plan_A.json out/plan_D.json --risk-runs 200 --out report.html` | Comparison, Gantt, loading, risk, reasons for moves |
 | 8. Planner's desk | `SynAPS-ProgramPlan serve program.json out/plan_A.json out/plan_D.json --journal decisions.jsonl` | Edit, check, reschedule, decisions, journal |
 | 9. Check edits without the server | `SynAPS-ProgramPlan check program.json out/plan_A.json --moves edits_A.json`, then `replan … --moves edits_A.json --out plan_R1.json` | Violations introduced by the edits, and a new plan with those edits held fixed |
-| 10. Back to MS Project | `SynAPS-ProgramPlan export program.json out/plan_A.json --out plan_A.xml` | The accepted plan, with dates, links, resources, deadlines and the plan hash |
+| 10. Back to MS Project | `SynAPS-ProgramPlan export program.json out/plan_A.json --out plan_A.xml` | The accepted plan: dates, links, resources, deadlines, baseline 0, the horizon bounds and the plan hash. A strict re-import of this file succeeds |
 | 11. A new status date | `SynAPS-ProgramPlan repair program.json out/plan_A.json --status-date 2027-03-01 --freeze-wd 10 --out plan2.json --out-program program2.json` | A plan from the new date. The next 10 working days stay put |
 | 12. Journal | `SynAPS-ProgramPlan journal decisions.jsonl --tail 5` | The latest decisions, and a check that the journal has not been altered |
 
 Each step is worked through with examples in [`docs/user-guide.md`](docs/user-guide.md).
 
-![Decision journal and schedule risk: risk drivers, milestones, criticality](docs/img/workbench-risk-journal.png)
+![Schedule risk of the accepted plan: P80, risk drivers and milestones](docs/img/workbench-risk-journal.png)
 
 ## The effect to measure
 
