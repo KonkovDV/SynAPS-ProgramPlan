@@ -221,6 +221,29 @@ XML разбирается безопасным парсером (`defusedxml`):
 
 Базовый план Primavera хранится отдельным проектом и не импортируется: эталон для сдвигов — даты текущего плана. Об этом пишет отчёт импорта.
 
+## Коды потерь импорта
+
+Каждая потеря попадает в `losses` и в отчёт импорта с кодом, объектом и текстом. Действия: `skipped` — объект не перенесён, `approximated` — перенесён приближённо, `clamped` — значение урезано до допустимого, `info` — сведение без изменения данных. `import --strict` останавливается на любом действии, кроме `info`.
+
+| Код | Действие | Когда возникает |
+|---|---|---|
+| `CONSTRAINT_UNSUPPORTED` | `skipped` | Ограничение даты, которого нет в модели: из MS Project — ALAP, SNLT, FNET; из Primavera — `CS_MSOB`, `CS_MEOA`, `CS_ALAP` |
+| `CONSTRAINT_UNKNOWN` | `skipped` | Код ограничения Primavera, которого импорт не знает |
+| `LOE_OR_SUMMARY` | `skipped` | Primavera: работа уровня усилий или суммарная задача |
+| `SUMMARY_LINK_SKIPPED` | `skipped` | Связь с суммарной задачей MS Project |
+| `PREDECESSOR_MISSING` | `skipped` | Связь ссылается на работу, которой нет в файле |
+| `MATERIAL_RESOURCE` | `skipped` | Материальный ресурс: в модели такого нет |
+| `DURATION_ROUNDED` | `approximated` | Длительность не кратна рабочему дню и округлена |
+| `ELAPSED_DURATION` | `approximated` | MPP: календарная длительность приближена рабочими днями |
+| `ELAPSED_LAG` | `approximated` | Календарный лаг связи приближён рабочими днями |
+| `ZERO_DURATION_AS_MILESTONE` | `approximated` | Primavera: работа нулевой длительности импортирована как веха |
+| `STATUS_WITHOUT_DATES` | `approximated` | Primavera: статус «завершена» без фактических дат; работа осталась плановой |
+| `UNKNOWN_LINK_TYPE` | `approximated` | Primavera: тип связи неизвестен, принят FS |
+| `ASSIGNMENT_CLAMPED` | `clamped` | Назначение больше ёмкости ресурса; значение урезано до неё (в MS Project — до `MaxUnits`) |
+| `BASELINE_NOT_IN_FILE` | `info` | Primavera: базового плана в файле нет, эталоном служат даты текущего плана |
+| `ALIAS_APPLIED` | `info` | Ресурсы сведены по таблице соответствий `--aliases` |
+| `SIMILAR_RESOURCE` | `info` | Похожие имена без строки в таблице соответствий; ресурсы не сведены |
+
 ## Таблица межпроектных связей (CSV)
 
 | Колонка | Смысл |

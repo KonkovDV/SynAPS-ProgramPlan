@@ -136,7 +136,7 @@ def report_data(
         "resources": resources,
         "edges": edges,
         "scenarios": scenarios,
-        "comparison": compare(plans),
+        "comparison": compare(program, plans),
         "conflicts": [c.as_dict() for c in analysis.conflicts] if analysis else [],
         "quality": [q.as_dict() for q in analysis.quality] if analysis else [],
         "witness": witness,

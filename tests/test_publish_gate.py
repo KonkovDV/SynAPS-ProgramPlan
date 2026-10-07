@@ -9,9 +9,11 @@ from fastapi.testclient import TestClient
 from synaps_programplan.api import app
 from synaps_programplan.cli import main
 from synaps_programplan.io import load_program, save_plan
+from synaps_programplan.planner import SolveConfig, plan
 from synaps_programplan.publish import attestation_error
 from synaps_programplan.report import report_data
 from synaps_programplan.result import PlanResult
+from synaps_programplan.scenarios import compare
 from tests.conftest import dep, program, task
 from tests.test_cli import _solve
 
@@ -77,3 +79,29 @@ def test_report_export_and_cli_check_do_not_publish_unaccepted_dates(tmp_path: P
     assert payload["scenarios"][0]["ok"] is False
     assert "tasks" not in payload["scenarios"][0]
     assert finish not in str(payload["comparison"])
+
+
+def test_a_rewritten_kpi_is_refused_while_dates_and_hashes_stay_clean() -> None:
+    prog = program([task("a", 2), task("b", 2)], [dep("a", "b")])
+    result = plan(prog, SolveConfig(solver="greedy"))
+    assert result.outcome.ok
+    assert attestation_error(prog, result) is None
+    assert result.kpi is not None
+    wrong = result.kpi.model_copy(update={"tardiness_wd": result.kpi.tardiness_wd + 5})
+    error = attestation_error(prog, result.model_copy(update={"kpi": wrong}))
+    assert error is not None
+    assert "kpi" in error
+
+
+def test_comparison_table_does_not_show_a_rewritten_kpi() -> None:
+    prog = program([task("a", 2), task("b", 2)], [dep("a", "b")])
+    result = plan(prog, SolveConfig(solver="greedy"))
+    honest = compare(prog, [result])[0]
+    assert honest["ok"] is True
+    assert "tardiness_wd" in honest
+    assert result.kpi is not None
+    wrong = result.kpi.model_copy(update={"tardiness_wd": result.kpi.tardiness_wd + 5})
+    row = compare(prog, [result.model_copy(update={"kpi": wrong})])[0]
+    assert row["ok"] is False
+    assert "tardiness_wd" not in row
+    assert "program_finish" not in row

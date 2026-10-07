@@ -27,6 +27,7 @@ from datetime import date
 from synaps_programplan.compiler import compile_program, reference_index
 from synaps_programplan.model import OKRProgram, TaskStatus
 from synaps_programplan.planner import Adjustments, SolveConfig, plan
+from synaps_programplan.publish import attestation_error
 from synaps_programplan.result import PlanResult
 
 SHIFT_LADDER = (0, 2, 5, 10, 20, 40, 80, 160)
@@ -338,19 +339,24 @@ def _dedupe(plans: list[PlanResult]) -> dict[str, str]:
     return duplicates
 
 
-def compare(plans: list[PlanResult]) -> list[dict[str, object]]:
-    """One KPI row per scenario (input of the comparison table and the UI)."""
+def compare(program: OKRProgram, plans: list[PlanResult]) -> list[dict[str, object]]:
+    """One KPI row per scenario (input of the comparison table and the UI).
+
+    A row carries figures only when the plan passes the publish gate on the
+    program it was solved on, so a rewritten KPI is not shown as a result.
+    """
     rows: list[dict[str, object]] = []
     for result in plans:
         kpi = result.kpi
+        verified = attestation_error(program_for_plan(program, result), result) is None
         row: dict[str, object] = {
             "scenario": result.scenario_id,
             "label": result.label,
-            "ok": result.outcome.ok,
+            "ok": verified,
             "claim": result.outcome.claim.value,
             "duplicate_of": result.metadata.get("duplicate_of"),
         }
-        if kpi is not None and result.outcome.ok:
+        if kpi is not None and verified:
             peak = max((r.peak_pct for r in kpi.resources), default=0.0)
             row.update(
                 {

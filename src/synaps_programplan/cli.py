@@ -346,7 +346,7 @@ def cmd_scenarios(args: argparse.Namespace) -> int:
         if result.outcome.ok and args.explain:
             result.explanations = explain(program_for_plan(program, result), result)
         save_plan(result, args.out_dir / f"plan_{result.scenario_id}.json")
-    _print(compare(scenario_set.plans))
+    _print(compare(program, scenario_set.plans))
     return 0 if any(p.outcome.ok for p in scenario_set.plans) else 1
 
 
@@ -536,7 +536,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
         {
             "out_dir": str(out),
             "conflicts": analysis.summary(),
-            "scenarios": compare(scenario_set.plans),
+            "scenarios": compare(program, scenario_set.plans),
             "risk_p80": risk.program_finish.get("p80") if risk else None,
             "risk_drivers": [d.as_dict() for d in risk.drivers] if risk else [],
             "infeasible_witness": witness.get("text"),

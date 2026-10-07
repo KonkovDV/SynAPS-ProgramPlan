@@ -47,7 +47,7 @@ The scheduler has been measured on the public sets used by research groups and s
 | RCPSP/max j10, j20, j30 | 810 | Start-to-start links, minimum and maximum lags. Every instance known to be infeasible is proved infeasible. Known optima match on every instance except one |
 | Study programmes | 3 sizes | Up to 64 projects and 2,688 activities. A plan is accepted at every size. CP-SAT cuts the greedy plan's total tardiness by 54%, 45% and 28% |
 
-Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 196.
+Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 198.
 
 ## What the programme manager gets
 
@@ -71,7 +71,7 @@ A plan reaches the report, the chart, the planner's desk and the service respons
 2. the SynAPS kernel check found no violation;
 3. an independent check walked the dates, links, loading, calendar and pins again and found nothing either.
 
-An edit made with the mouse goes through the same independent check as a computed plan. Every plan carries a hash of the input and a hash of the result. If the dates in the file change while the hash stays the same, or the plan was computed for a different programme, it is neither shown nor exported.
+An edit made with the mouse goes through the same independent check as a computed plan. Every plan carries a hash of the input and a hash of the result. If the dates in the file change while the hash stays the same, or the plan was computed for a different programme, it is neither shown nor exported. The plan's figures (programme finish, tardiness, loading) are recomputed from the dates at every check, so an altered figure does not pass either.
 
 Each run has one verdict:
 
@@ -195,7 +195,7 @@ mypy src
 
 The SynAPS kernel is pinned to commit `d4837ab395170f786fae40791ceda9fc4c9b191d`. The same commit is recorded in `src/synaps_programplan/versions.py`, `pyproject.toml` and `CLAIMS_REGISTRY.md`. `tests/test_pin.py` checks that they agree.
 
-From a checkout: `python -m synaps_programplan`. There are two services. `SynAPS-ProgramPlan serve` keeps the journal, checks roles, and outside the local address speaks only over TLS. `uvicorn synaps_programplan.api:app` stores nothing: on the local address it answers at once, from anywhere else only with a token. Public-set runs: `python scripts/bench_psplib.py`.
+From a checkout: `python -m synaps_programplan`. There are two services. `SynAPS-ProgramPlan serve` keeps the journal, checks roles, and outside the local address speaks only over TLS. `uvicorn synaps_programplan.api:app` stores nothing: on the local address it answers at once, from anywhere else only with a token. Public-set runs: `python scripts/bench_psplib.py <set directory> --opt <optima table> --time-limit 10 --seed 42`.
 
 Exit codes: `0` — a plan was accepted or the check passed, `1` — no accepted plan, or a violation was found, `2` — the input is invalid.
 

@@ -30,7 +30,7 @@ COUNT_PATTERNS: dict[str, list[str]] = {
     "README.en.md": [r"Automated tests: (\d+)\."],
     "docs/quality-assurance.md": [
         r"Набор `tests/` \((\d+) тест",
-        r"Python 3\.12: (\d+) тест",
+        r"Linux, Python 3\.13: (\d+) тест",
         r"5 010 работах, (\d+) тест",
     ],
     "docs/gap-register.md": [r"(\d+) тест"],
