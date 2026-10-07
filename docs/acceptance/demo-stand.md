@@ -8,7 +8,7 @@
 |---|---|---|
 | ОС | Windows 10/11 или Linux x86-64. Проверено на Windows и на Ubuntu в CI | `python -c "import platform; print(platform.platform())"` |
 | Python | 3.12 или новее | `python --version` |
-| Память и процессор | Для учебной программы показа хватает 8 ГБ и четырёх ядер | — |
+| Память и процессор | Отдельный минимум для показа не измерялся. Учебная программа — четыре ОКР | — |
 | Браузер | Любой современный: Chromium, Firefox, Edge, Яндекс Браузер. Отчёт работает без сети | Открыть `report.html` |
 | Сеть | Не нужна для расчёта и отчёта. Нужна только для установки с GitHub | — |
 | Права | Запись в каталог репозитория. Администратор не нужен | — |
@@ -32,7 +32,7 @@ python -m pip install -e ".[api]"
 python scripts/fetch_wheelhouse.py
 ```
 
-Каталог `wheelhouse` и файл `requirements-hashed.txt` переносятся на стенд. На стенде:
+Колесо ядра попадает в набор, только если `SYNAPS_SOURCE` указывает на каталог SynAPS с тем же коммитом, что в `requirements.lock`. Иначе в хешах ядра не будет. Каталог `wheelhouse` и файл `requirements-hashed.txt` переносятся на стенд. На стенде:
 
 ```text
 python -m pip install --no-index --find-links wheelhouse -r requirements-hashed.txt
@@ -41,7 +41,7 @@ python -m pip install --no-index --no-deps wheelhouse/synaps_programplan-0.1.0-p
 
 Колесо продукта скрипт собирает сам. Установка из исходников без сети не получится: ей нужен `hatchling`.
 
-Колёса, собранные на Windows, на Linux не ставятся. Набор собирают под ОС стенда.
+Набор собирают на той же ОС и том же процессоре, что у стенда: колесо OR-Tools с Windows на Linux не ставится.
 
 **Без установки.** Если ставить нельзя совсем, показ идёт по уже собранным файлам: `report.html` и `report_infeasible.html` открываются в браузере как файлы. Данные лежат внутри HTML, сервер и Python не нужны. Выгрузку в MS Project и рабочее место в этом случае не показывают.
 
@@ -55,8 +55,10 @@ SynAPS-ProgramPlan doctor --demo out/demo
 
 | Проверка | Что значит отказ | Что сделать |
 |---|---|---|
-| `python` | Python старше 3.12 | Поставить 3.12 |
-| `import:synaps.precedence` | Стоит старое ядро SynAPS без связей общего вида | `python -m pip install -e <каталог SynAPS> --no-deps` или переустановка по `pyproject.toml` |
+| `python` | Python ниже 3.12 | Поставить 3.12 |
+| `import:synaps.precedence` | Стоит ядро SynAPS без связей общего вида | Переустановить ядро коммитом из `pyproject.toml`, не с произвольного каталога |
+| `demo_program` | В каталоге нет `program.json` | Привезти собранный `out/demo` или собрать показ заново |
+| `demo_plans` | В каталоге нет файлов `plan_*.json` | Собрать каталог показа заново |
 | `ortools_version` | Не та версия OR-Tools | Ставить из `requirements-hashed.txt` |
 | `language_model_off` | Заданы переменные Yandex Cloud | Убрать `SYNAPS_PROGRAMPLAN_YANDEX_API_KEY` и `SYNAPS_PROGRAMPLAN_YANDEX_FOLDER` из окружения |
 | `plan:<вариант>` | План изменён после расчёта, посчитан для другой программы или его причины расходятся с датами | Собрать каталог показа заново |
@@ -77,14 +79,14 @@ SynAPS-ProgramPlan doctor --demo out/demo
    SynAPS-ProgramPlan demo --projects 4 --time-limit 8 --risk-runs 40 --out-dir out/demo
    ```
 
-   На машине сборки это около 30 секунд и код 0. После этого цифры читают из таблицы отчёта, а не из сценария.
+   На машине сборки 7 октября 2026 года эта команда заняла около 33 с и вернула код 0. На другой машине время другое. После сборки цифры читают из таблицы отчёта, а не из сценария.
 3. Прерванную сборку не показывают: каталог удаляют целиком и собирают заново.
 
 ## За час до показа
 
-1. `git log -1` — коммит совпадает с тем, что на GitHub.
+1. Если стенд — клон репозитория, `git log -1` совпадает с GitHub. Если поставлен колесом, `SynAPS-ProgramPlan version` показывает версию `0.1.0` и закреплённый коммит ядра.
 2. `SynAPS-ProgramPlan doctor --demo out/demo` — код 0.
-3. Открыть `out/demo/report.html` и `out/demo/report_infeasible.html` в браузере. В шапке: «данные: учебные», «подтверждённый уровень 4».
+3. Открыть `out/demo/report.html` и `out/demo/report_infeasible.html` в браузере. В шапке: «данные: учебные» и «лабораторный прототип, подтверждённый уровень 4».
 4. Проверить на проекторе: Гант читается в масштабе «вся программа», заголовок ОКР сворачивается, список «Предприятие» отбирает одну площадку.
 5. Сделать копию каталога: `out/demo-backup`. Если показ пойдёт с чужого компьютера — ещё одну на съёмном носителе.
 6. Если будет рабочее место: `SynAPS-ProgramPlan serve out/demo/program.json out/demo/plan_A.json out/demo/plan_D.json --journal out/demo/decisions.jsonl --risk-runs 40` и открыть `http://127.0.0.1:8765/`. Сервер слушает только этот компьютер.
