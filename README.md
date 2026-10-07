@@ -189,7 +189,7 @@ ruff format --check src tests scripts
 mypy src
 ```
 
-Ядро SynAPS подключается напрямую, без отдельной копии, и закреплено коммитом `d4837ab395170f786fae40791ceda9fc4c9b191d`. Тот же коммит указан в `src/synaps_programplan/versions.py`, `pyproject.toml` и `CLAIMS_REGISTRY.md`, а тест `tests/test_pin.py` следит, чтобы они совпадали. Связи общего вида добавлены в ядро в [KonkovDV/SynAPS#45](https://github.com/KonkovDV/SynAPS/pull/45). Выбор ровно одного режима исполнения — в [KonkovDV/SynAPS#46](https://github.com/KonkovDV/SynAPS/pull/46). Переналадка на отдельном рабочем центре, не запрещающая режимы на другой дорожке, — в [KonkovDV/SynAPS#47](https://github.com/KonkovDV/SynAPS/pull/47). Оба запроса ещё не влиты в `main` ядра.
+Ядро SynAPS подключается по закреплённому коммиту `d4837ab395170f786fae40791ceda9fc4c9b191d`. Тот же коммит указан в `src/synaps_programplan/versions.py`, `pyproject.toml` и `CLAIMS_REGISTRY.md`. Тест `tests/test_pin.py` проверяет, что они совпадают.
 
 Запуск из исходников: `python -m synaps_programplan`. Сервисов два. Рабочее место `SynAPS-ProgramPlan serve` хранит журнал, проверяет роли и за пределами локального адреса работает только по TLS. Вычислительный сервис `uvicorn synaps_programplan.api:app` ничего не хранит: на локальном адресе он отвечает сразу, с любого другого — только по токену. Прогон открытых наборов: `python scripts/bench_psplib.py`.
 

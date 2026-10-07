@@ -191,7 +191,7 @@ ruff format --check src tests scripts
 mypy src
 ```
 
-The SynAPS kernel is used in place and pinned to commit `d4837ab395170f786fae40791ceda9fc4c9b191d`. The same commit is recorded in `src/synaps_programplan/versions.py`, `pyproject.toml` and `CLAIMS_REGISTRY.md`. `tests/test_pin.py` checks that they agree. Generalised precedence was added to the kernel in [KonkovDV/SynAPS#45](https://github.com/KonkovDV/SynAPS/pull/45). Picking exactly one execution mode is [KonkovDV/SynAPS#46](https://github.com/KonkovDV/SynAPS/pull/46). Setup on a separate work center, which does not forbid modes on another lane, is [KonkovDV/SynAPS#47](https://github.com/KonkovDV/SynAPS/pull/47). Neither pull request is on the kernel `main` yet.
+The SynAPS kernel is pinned to commit `d4837ab395170f786fae40791ceda9fc4c9b191d`. The same commit is recorded in `src/synaps_programplan/versions.py`, `pyproject.toml` and `CLAIMS_REGISTRY.md`. `tests/test_pin.py` checks that they agree.
 
 From a checkout: `python -m synaps_programplan`. There are two services. `SynAPS-ProgramPlan serve` keeps the journal, checks roles, and outside the local address speaks only over TLS. `uvicorn synaps_programplan.api:app` stores nothing: on the local address it answers at once, from anywhere else only with a token. Public-set runs: `python scripts/bench_psplib.py`.
 
