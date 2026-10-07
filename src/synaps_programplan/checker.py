@@ -18,6 +18,7 @@ from synaps_programplan.model import (
     OKRProgram,
     Task,
     TaskStatus,
+    required_changeover,
     skill_pool_conflicts,
 )
 from synaps_programplan.result import Severity, TaskPlan, Violation
@@ -53,6 +54,7 @@ def check_plan(program: OKRProgram, plan: list[TaskPlan]) -> list[Violation]:
     for task_id, row in rows.items():
         _check_task(ctx, ctx.tasks[task_id], row, violations)
     _check_dependencies(ctx, rows, violations)
+    _check_changeover(ctx, rows, violations)
     _check_capacity(ctx, rows, violations)
     _check_skills(ctx, rows, violations)
     return violations
@@ -340,6 +342,59 @@ def _occupancy(ctx: _Ctx, task: Task, row: TaskPlan) -> tuple[int, int] | None:
     start = ctx.base if task.status is TaskStatus.IN_PROGRESS else ctx.counter.ordinal_on_or_after(row.start)
     end = ctx.end_anchor(row)
     return (start, end) if end > start else None
+
+
+def _check_changeover(ctx: _Ctx, rows: dict[str, TaskPlan], out: list[Violation]) -> None:
+    """A stand keeps a gap between different states, and that gap is not work."""
+    if not ctx.program.changeovers:
+        return
+    states = {row.id: row for row in ctx.program.stand_states}
+    groups: dict[str, list[tuple[Task, TaskPlan, int, int]]] = defaultdict(list)
+    for task_id, row in rows.items():
+        task = ctx.tasks[task_id]
+        named = states.get(task.stand_state_id or "")
+        if named is None or task.status is TaskStatus.DONE:
+            continue
+        start = ctx.start_anchor(task, row)
+        end = ctx.end_anchor(row)
+        groups[named.resource_id].append((task, row, start, end))
+    for resource_id, items in groups.items():
+        items.sort(key=lambda item: (item[2], item[0].id))
+        for index, (task, _row, start, _end) in enumerate(items):
+            if index == 0:
+                continue
+            previous, _prev_row, _prev_start, prev_end = items[index - 1]
+            required = required_changeover(
+                ctx.program, resource_id, previous.stand_state_id or "", task.stand_state_id or ""
+            )
+            if required <= 0:
+                continue
+            if start - prev_end < required:
+                out.append(
+                    Violation(
+                        code="CHANGEOVER_SHORT",
+                        severity=HARD,
+                        message=(
+                            f"stand {resource_id} needs {required} wd between "
+                            f"{previous.id} and {task.id}, gap is {start - prev_end}"
+                        ),
+                        task_ids=[previous.id, task.id],
+                        resource_id=resource_id,
+                    )
+                )
+            window = (prev_end, prev_end + required)
+            for other, _other_row, other_start, other_end in items:
+                if other.id == previous.id or other_end <= window[0] or other_start >= window[1]:
+                    continue
+                out.append(
+                    Violation(
+                        code="CHANGEOVER_OVERLAP",
+                        severity=HARD,
+                        message=(f"changeover on {resource_id} after {previous.id} overlaps work {other.id}"),
+                        task_ids=[previous.id, other.id],
+                        resource_id=resource_id,
+                    )
+                )
 
 
 def _check_capacity(ctx: _Ctx, rows: dict[str, TaskPlan], out: list[Violation]) -> None:

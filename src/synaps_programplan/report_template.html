@@ -158,6 +158,7 @@ function taskTip(t){let h=`<b>${esc(t.name)}</b><br>${esc(projName[t.project]||t
  if(t.edited)h+=`<br><b>Правка:</b> было ${t.milestone?fmt(t.orig.finish):fmt(t.orig.start)+" — "+fmt(t.orig.finish)}`;
  if(t.ref_start)h+=`<br>Исходный план: ${fmt(t.ref_start)} — ${fmt(t.ref_finish)}`;if(t.shift)h+=`<br>Сдвиг: ${t.shift>0?"+":""}${t.shift} р.д.`;
  if(t.mode)h+=`<br>Режим: ${esc(t.mode)}`;
+ if(t.setup)h+=`<br>Переналадка: ${esc(t.setup.from_code)} → ${esc(t.setup.to_code)}, ${t.setup.days} р.д.`;
  if(t.percent!=null)h+=`<br>Выполнение: ${t.percent} %`;
  if(t.baseline_start)h+=`<br>База: ${fmt(t.baseline_start)} — ${fmt(t.baseline_finish)}`+(t.baseline_slip_wd!=null?`, отклонение ${t.baseline_slip_wd>0?"+":""}${t.baseline_slip_wd} р.д.`:"");
  if(t.actual_start)h+=`<br>Факт: ${fmt(t.actual_start)}`+(t.actual_finish?` — ${fmt(t.actual_finish)}`:"");
@@ -233,6 +234,7 @@ function gantt(){const s=cur(),box=$("gantt");if(!s){box.innerHTML="";return}
   const attrs=`data-id="${esc(t.id)}"${mv?` data-move="1" tabindex="0" role="button" aria-label="${esc(t.name)}: ${t.milestone?fmt(t.finish):fmt(t.start)+" — "+fmt(t.finish)}"`:""}${stroke}`;
   if(t.milestone)svg+=`<path d="M${a} ${y+2}l6 7-6 7-6-7z" fill="${c}" ${attrs}/>`;
   else svg+=`<rect x="${a}" y="${y+2}" width="${Math.max(2,b-a)}" height="8" rx="2" fill="${c}" opacity="${t.status==="DONE"?.55:.9}" ${attrs}/>`;
+  if(t.setup){const s1=LW+X(t.setup.start),s2=LW+X(t.setup.finish)+pxd;svg+=`<rect data-id="${esc(t.id)}" x="${s1}" y="${y+2}" width="${Math.max(2,s2-s1)}" height="8" fill="${c}" opacity=".35" stroke="${c}" stroke-dasharray="2 1"/>`}
   if(fact&&t.actual_start){const a1=LW+X(t.actual_start),a2=LW+X(t.actual_finish||D.program.status_date);svg+=`<rect x="${Math.min(a1,a2)}" y="${y+15}" width="${Math.max(2,Math.abs(a2-a1))}" height="3" fill="#1d2330"/>`}
   if(fact&&t.forecast_start&&t.status==="IN_PROGRESS"){const f1=LW+X(t.forecast_start),f2=LW+X(t.forecast_finish)+(t.milestone?0:pxd);svg+=`<rect x="${f1}" y="${y+19}" width="${Math.max(2,f2-f1)}" height="3" fill="${c}" opacity=".45"/>`}
   if(t.id in p80late)svg+=`<circle cx="${b+12}" cy="${y+8}" r="4" fill="${p80late[t.id]?"var(--crit)":"#2e7d32"}"/>`;

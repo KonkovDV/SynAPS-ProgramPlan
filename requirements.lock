@@ -1,7 +1,7 @@
 # Runtime lock for SynAPS-ProgramPlan. Regenerate on the target platform:
 #   python scripts/write_delivery.py
-# Product version 0.1.0. SynAPS commit 1feb50b33568cb86c1bfd12b9d7cd7247e17ee49.
-synaps @ git+https://github.com/KonkovDV/SynAPS.git@1feb50b33568cb86c1bfd12b9d7cd7247e17ee49
+# Product version 0.1.0. SynAPS commit d4837ab395170f786fae40791ceda9fc4c9b191d.
+synaps @ git+https://github.com/KonkovDV/SynAPS.git@d4837ab395170f786fae40791ceda9fc4c9b191d
 pydantic==2.13.5
 ortools==9.15.6755
 defusedxml==0.7.1

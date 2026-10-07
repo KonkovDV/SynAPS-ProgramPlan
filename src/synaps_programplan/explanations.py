@@ -22,7 +22,7 @@ from typing import Any
 
 from synaps_programplan.compiler import Compiled, anchor_is_end_dst, anchor_is_end_src, compile_program
 from synaps_programplan.evidence import fingerprint
-from synaps_programplan.model import OKRProgram, TaskStatus
+from synaps_programplan.model import OKRProgram, TaskStatus, required_changeover
 from synaps_programplan.planner import Adjustments, SolveConfig, adjustments_of, plan, plan_hash
 from synaps_programplan.result import CauseKind, Claim, Explanation, ExplanationFact, PlanResult, TaskPlan
 
@@ -60,7 +60,7 @@ _WINDOW_KIND = {
     "scenario": CauseKind.BASELINE,
 }
 
-_RESERVED = frozenset({CauseKind.SETUP_TRANSITION})
+_RESERVED: frozenset[CauseKind] = frozenset()
 
 
 @dataclass
@@ -257,6 +257,7 @@ def fact_errors(program: OKRProgram, result: PlanResult) -> list[str]:
                 CauseKind.CALENDAR,
                 CauseKind.MAINTENANCE,
                 CauseKind.TEST_ARTICLE,
+                CauseKind.SETUP_TRANSITION,
             )
             and not fact.resource_id
         ):
@@ -393,9 +394,57 @@ def _cause(ctx: _Ctx, task_id: str) -> _Cause:
         else:
             answer = _window_cause(reason)
     else:
-        answer = _resource_cause(ctx, row)
+        setup = _changeover_cause(ctx, row)
+        answer = setup if setup is not None else _resource_cause(ctx, row)
     ctx.cache[task_id] = answer
     return answer
+
+
+def _changeover_cause(ctx: _Ctx, row: TaskPlan) -> _Cause | None:
+    task = ctx.program.task(row.task_id)
+    if not task.stand_state_id or not ctx.program.changeovers:
+        return None
+    states = {item.id: item for item in ctx.program.stand_states}
+    named = states.get(task.stand_state_id)
+    if named is None:
+        return None
+    start = row.start_index
+    best: tuple[int, str] | None = None
+    for other in ctx.rows.values():
+        if other.task_id == row.task_id or other.end_index > start:
+            continue
+        previous = ctx.program.task(other.task_id)
+        if previous.stand_state_id is None:
+            continue
+        previous_state = states.get(previous.stand_state_id)
+        if previous_state is None or previous_state.resource_id != named.resource_id:
+            continue
+        required = required_changeover(
+            ctx.program, named.resource_id, previous.stand_state_id, task.stand_state_id
+        )
+        if required <= 0 or other.end_index + required != start:
+            continue
+        if best is None or other.end_index > best[0]:
+            best = (other.end_index, other.task_id)
+    if best is None:
+        return None
+    previous_id = best[1]
+    previous = ctx.program.task(previous_id)
+    required = required_changeover(
+        ctx.program, named.resource_id, previous.stand_state_id or "", task.stand_state_id
+    )
+    return _Cause(
+        code=CauseKind.SETUP_TRANSITION.value,
+        refs=[previous_id],
+        text=(
+            f"переналадка стенда {named.resource_id} с {previous.stand_state_id} "
+            f"на {task.stand_state_id}, {required} раб. дн."
+        ),
+        kind=CauseKind.SETUP_TRANSITION,
+        resource_id=named.resource_id,
+        blocker_task_id=previous_id,
+        dates=(ctx.rows[previous_id].finish.isoformat(),),
+    )
 
 
 def _project_code(ctx: _Ctx, project_id: str) -> str:

@@ -1,10 +1,11 @@
 # AUDIT SynAPS-ProgramPlan — 2026-10-07, журнал доказательств
 
-Проверено на этой машине (Windows, Python 3.12.10, SynAPS `1feb50b33568cb86c1bfd12b9d7cd7247e17ee49`, запрос [SynAPS#46](https://github.com/KonkovDV/SynAPS/pull/46), ещё не влит в `main` ядра).
+Проверено на этой машине (Windows, Python 3.12.10, SynAPS `d4837ab395170f786fae40791ceda9fc4c9b191d`, запросы [SynAPS#46](https://github.com/KonkovDV/SynAPS/pull/46) и [SynAPS#47](https://github.com/KonkovDV/SynAPS/pull/47), ещё не влиты в `main` ядра).
 
-- `python -m pytest tests -q`: 190 passed, 11 с, пропусков нет. `ruff check src tests scripts`, `ruff format --check src tests scripts`, `mypy src`, `python scripts/lint_claims.py`, `python scripts/build_evidence.py --check --demo-dir out/demo` — код 0.
+- `python -m pytest tests -q`: 196 passed, 11 с, пропусков нет. `ruff check src tests scripts`, `ruff format --check src tests scripts`, `mypy src`, `python scripts/lint_claims.py`, `python scripts/build_evidence.py --check --demo-dir out/demo` — код 0.
 - Свежая сборка `demo --projects 4 --time-limit 8 --risk-runs 40 --out-dir out/demo-check` — код 0, около 33 с. Хеш плана A совпал с каталогом показа: `b186cfe85cb25432e885c146a6551cbaae8d01c152ed565d87bb1ea32641c193`. Окончание 23.08.2028, просрочка 139, сдвинута 71 работа, P80 09.03.2029. Каталог показа `out/demo` не перезаписывался.
 - У ещё не начатой работы несколько режимов. CP-SAT оставляет один. Жадный диспетчер отвечает `UNSUPPORTED_MODEL` и дат не отдаёт. Набора MMLIB50 в репозитории нет.
+- У стенда состояния и матрица переналадки. Между разными состояниями остаётся интервал, его видно на диаграмме и в причине `SETUP_TRANSITION`. К длительности работы он не прибавляется. Несовместимая конфигурация отклоняется при чтении.
 - GitHub Actions закреплены по SHA коммита: `actions/checkout` v5.1.0, `actions/setup-python` v6.3.0. `/solve` и скачивание варианта из рабочего места не отдают даты, если хеш плана не совпал.
 
 # AUDIT SynAPS-ProgramPlan — 2026-10-06, перед показом заказчику

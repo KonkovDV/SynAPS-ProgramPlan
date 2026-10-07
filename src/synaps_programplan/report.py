@@ -19,7 +19,7 @@ from typing import Any
 from synaps_programplan.calendar import is_provisional
 from synaps_programplan.compiler import compile_program
 from synaps_programplan.conflicts import Analysis
-from synaps_programplan.model import OKRProgram, TaskStatus
+from synaps_programplan.model import OKRProgram, TaskStatus, required_changeover
 from synaps_programplan.montecarlo import RiskResult
 from synaps_programplan.planner import resource_profiles
 from synaps_programplan.publish import attestation_error
@@ -97,6 +97,7 @@ def report_data(
                         for d in tasks[row.task_id].demands_for(row.mode_code)
                     ],
                     "why": explanations.get(row.task_id),
+                    **_setup_field(program, compiled, row, result.tasks),
                 }
                 for row in result.tasks
             ]
@@ -266,6 +267,48 @@ def _script_src(page: str, nonce: str | None) -> tuple[str, str]:
         raise RuntimeError("report has no script to pin")
     sources = " ".join(f"'{_script_hash(body)}'" for _attrs, body in bodies)
     return sources, page
+
+
+def _setup_field(program: OKRProgram, compiled: Any, row: Any, rows: list[Any]) -> dict[str, Any]:
+    """The changeover interval that ends when this task starts, when the stand needed one."""
+    task = program.task(row.task_id)
+    if not task.stand_state_id:
+        return {}
+    states = {item.id: item for item in program.stand_states}
+    named = states.get(task.stand_state_id)
+    if named is None:
+        return {}
+    best: tuple[int, str, int] | None = None
+    for other in rows:
+        if other.task_id == row.task_id or other.end_index > row.start_index:
+            continue
+        previous = program.task(other.task_id)
+        if previous.stand_state_id is None:
+            continue
+        previous_state = states.get(previous.stand_state_id)
+        if previous_state is None or previous_state.resource_id != named.resource_id:
+            continue
+        required = required_changeover(
+            program, named.resource_id, previous.stand_state_id, task.stand_state_id
+        )
+        if required <= 0:
+            continue
+        if best is None or other.end_index > best[0]:
+            best = (other.end_index, previous_state.code, required)
+    if best is None:
+        return {}
+    end_index, from_code, required = best
+    start = compiled.axis.start_date(end_index)
+    finish = compiled.axis.finish_date(end_index, end_index + required)
+    return {
+        "setup": {
+            "start": start.isoformat(),
+            "finish": finish.isoformat(),
+            "days": required,
+            "from_code": from_code,
+            "to_code": named.code,
+        }
+    }
 
 
 def render_html(data: dict[str, Any], title: str | None = None, *, nonce: str | None = None) -> str:

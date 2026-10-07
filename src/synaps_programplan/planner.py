@@ -401,6 +401,7 @@ def left_shift(
                 src = pos[edge.src_task_id]
                 value = (src[1] if anchor_is_end_src(edge.type) else src[0]) + edge.lag_wd
                 lower = max(lower, value - duration if anchor_is_end_dst(edge.type) else value)
+            lower = max(lower, _changeover_lower(compiled, pos, task_id, start))
             if lower >= start:
                 continue
             needs = demand.get(task_id, {})
@@ -417,6 +418,24 @@ def left_shift(
         if not moved:
             break
     return pos
+
+
+def _changeover_lower(compiled: Compiled, pos: dict[str, tuple[int, int]], task_id: str, start: int) -> int:
+    """Do not pull a task into the changeover that the stand still owes the previous job."""
+    place = compiled.stand_task.get(task_id)
+    if place is None:
+        return 0
+    resource_id, state_id = place
+    bound = 0
+    for other, (other_start, other_end) in pos.items():
+        if other == task_id or other_start >= start:
+            continue
+        other_place = compiled.stand_task.get(other)
+        if other_place is None or other_place[0] != resource_id:
+            continue
+        gap = compiled.changeover_wd.get((resource_id, other_place[1], state_id), 0)
+        bound = max(bound, other_end + gap)
+    return bound
 
 
 def _earliest_fit(

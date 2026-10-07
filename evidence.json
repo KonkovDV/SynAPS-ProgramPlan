@@ -1,6 +1,6 @@
 {
   "tests": {
-    "passed": 190,
+    "passed": 196,
     "skipped": 0,
     "failed": 0
   },
@@ -75,7 +75,7 @@
     "platform": "Windows-11-10.0.26200-SP0",
     "python": "3.12.10",
     "product_version": "0.1.0",
-    "synaps_commit": "1feb50b33568cb86c1bfd12b9d7cd7247e17ee49",
+    "synaps_commit": "d4837ab395170f786fae40791ceda9fc4c9b191d",
     "ortools": "9.15.6755",
     "java": "openjdk version \"17.0.20\" 2026-07-21 LTS",
     "mpxj": "16.10.0"

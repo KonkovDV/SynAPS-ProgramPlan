@@ -76,7 +76,7 @@ flowchart LR
 
 ## Связь с ядром SynAPS
 
-- **Прямое подключение.** SynAPS берётся из своего репозитория и закреплён коммитом `1feb50b33568cb86c1bfd12b9d7cd7247e17ee49`. Тест `tests/test_pin.py` сверяет этот коммит в `pyproject.toml`, `versions.py`, `README.md` и `CLAIMS_REGISTRY.md`. Коммит на ветке [KonkovDV/SynAPS#46](https://github.com/KonkovDV/SynAPS/pull/46), не на `main` ядра: установка по полному SHA этот объект находит.
+- **Прямое подключение.** SynAPS берётся из своего репозитория и закреплён коммитом `d4837ab395170f786fae40791ceda9fc4c9b191d`. Тест `tests/test_pin.py` сверяет этот коммит в `pyproject.toml`, `versions.py`, `README.md` и `CLAIMS_REGISTRY.md`. Коммит лежит в [KonkovDV/SynAPS#47](https://github.com/KonkovDV/SynAPS/pull/47) поверх [KonkovDV/SynAPS#46](https://github.com/KonkovDV/SynAPS/pull/46), не на `main` ядра: установка по полному SHA этот объект находит.
 - **Изменения ядра — обратно совместимы.** Для ОКР в ядро добавлены обобщённые связи `PrecedenceEdge` (FS/SS/FF/SF, min/max лаги) в CP-SAT, жадном диспетчере и проверке ядра; существующие задачи и тесты ядра не меняются. Решатель, который рёбра не поддерживает, получает отказ, а не молчаливое игнорирование.
 - **Инвариант ядра:** `FEASIBLE` ⇒ нет доказанных жёстких нарушений. Доменный слой добавляет вторую, независимую проверку поверх него.
 

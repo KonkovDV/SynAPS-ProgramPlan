@@ -130,7 +130,6 @@ class CauseKind(StrEnum):
     EARLIEST_START = "EARLIEST_START"
     IN_PROGRESS = "IN_PROGRESS"
     OPTIMIZER_CHOICE = "OPTIMIZER_CHOICE"
-    # Reserved for changeover (PR-04). Not emitted yet.
     SETUP_TRANSITION = "SETUP_TRANSITION"
     MODE_SELECTION = "MODE_SELECTION"
 

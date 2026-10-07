@@ -31,6 +31,7 @@ from synaps.model import (
     OperationAuxRequirement,
     Order,
     ScheduleProblem,
+    SetupEntry,
     State,
     WorkCenter,
 )
@@ -119,6 +120,9 @@ class Compiled:
     # task -> mode code -> aux uuid -> units. Empty when the program has one way per task.
     mode_demand: dict[str, dict[str, dict[UUID, int]]] = field(default_factory=dict)
     selected_mode: dict[str, str] = field(default_factory=dict)
+    # task -> (stand resource, stand state). Empty when the program has no changeover.
+    stand_task: dict[str, tuple[str, str]] = field(default_factory=dict)
+    changeover_wd: dict[tuple[str, str, str], int] = field(default_factory=dict)
 
     def offset(self, index: int) -> datetime:
         return self.origin + timedelta(minutes=index)
@@ -453,6 +457,7 @@ def _build_kernel(
     has_milestone = any(windows[task_id].duration == 0 for task_id in active)
     horizon_end = origin + timedelta(minutes=horizon + (1 if has_milestone else 0))
     state = State(id=sid("state", "work"), code="work")
+    placement, matrix = _stand_layout(program, tasks, active)
     succ_all: dict[str, list[Dependency]] = defaultdict(list)
     for edge in all_edges:
         succ_all[edge.src_task_id].append(edge)
@@ -491,14 +496,15 @@ def _build_kernel(
         for seq, task_id in enumerate(chain):
             window = windows[task_id]
             tail = 1 if window.duration == 0 else 0
+            place = placement.get(task_id)
             operations.append(
                 Operation(
                     id=task_op[task_id],
                     order_id=order_id,
                     seq_in_order=seq,
-                    state_id=state.id,
+                    state_id=sid("state", place[1]) if place else state.id,
                     base_duration_min=window.duration,
-                    eligible_wc_ids=[wc_id],
+                    eligible_wc_ids=[sid("wc", "stand", place[0]) if place else wc_id],
                     predecessor_op_id=previous,
                     earliest_start=origin + timedelta(minutes=max(0, window.lo)),
                     latest_finish=origin + timedelta(minutes=min(window.hi, horizon) + tail),
@@ -556,12 +562,13 @@ def _build_kernel(
         )
         for edge in _dedupe_edges(kernel_view)
     ]
+    stand_states, setup_entries = _stand_kernel(placement, matrix)
     problem = ScheduleProblem(
-        states=[state],
+        states=[state, *stand_states],
         orders=orders,
         operations=operations,
-        work_centers=centers,
-        setup_matrix=[],
+        work_centers=[*centers, *_stand_centers(placement)],
+        setup_matrix=setup_entries,
         auxiliary_resources=aux,
         aux_requirements=reqs,
         precedence_edges=edges,
@@ -578,6 +585,8 @@ def _build_kernel(
         "availability": availability,
         "block_ops": block_ops,
         "mode_demand": _mode_demand(program, active),
+        "stand_task": placement,
+        "changeover_wd": matrix,
     }
 
 
@@ -709,6 +718,58 @@ def _resources(
                 )
             )
     return resource_aux, skill_aux, skill_members, availability, aux, reqs, blocks
+
+
+def _stand_layout(
+    program: OKRProgram, tasks: dict[str, Task], active: list[str]
+) -> tuple[dict[str, tuple[str, str]], dict[tuple[str, str, str], int]]:
+    """Tasks that sit on a stand with a changeover matrix, and that matrix in working days."""
+    if not program.changeovers:
+        return {}, {}
+    stands = {row.resource_id for row in program.changeovers}
+    named = {row.id: row for row in program.stand_states}
+    placement: dict[str, tuple[str, str]] = {}
+    for task_id in active:
+        task = tasks[task_id]
+        if task.stand_state_id is None:
+            continue
+        state = named.get(task.stand_state_id)
+        if state is None or state.resource_id not in stands:
+            continue
+        placement[task_id] = (state.resource_id, state.id)
+    matrix = {
+        (row.resource_id, row.from_state_id, row.to_state_id): row.duration_wd for row in program.changeovers
+    }
+    return placement, matrix
+
+
+def _stand_centers(placement: dict[str, tuple[str, str]]) -> list[WorkCenter]:
+    return [
+        WorkCenter(id=sid("wc", "stand", resource_id), code=f"stand:{resource_id}", capability_group="stand")
+        for resource_id in sorted({resource_id for resource_id, _state in placement.values()})
+    ]
+
+
+def _stand_kernel(
+    placement: dict[str, tuple[str, str]], matrix: dict[tuple[str, str, str], int]
+) -> tuple[list[State], list[SetupEntry]]:
+    keys = {state for _resource, state in placement.values()}
+    for _resource, src, dst in matrix:
+        keys.add(src)
+        keys.add(dst)
+    states = [State(id=sid("state", key), code=key) for key in sorted(keys)]
+    stands = {resource_id for resource_id, _state in placement.values()}
+    entries = [
+        SetupEntry(
+            work_center_id=sid("wc", "stand", resource_id),
+            from_state_id=sid("state", src),
+            to_state_id=sid("state", dst),
+            setup_minutes=minutes,
+        )
+        for (resource_id, src, dst), minutes in sorted(matrix.items())
+        if resource_id in stands
+    ]
+    return states, entries
 
 
 def _kernel_modes(task: Task) -> list[KernelMode]:

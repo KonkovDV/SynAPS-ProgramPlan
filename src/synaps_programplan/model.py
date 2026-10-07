@@ -148,6 +148,7 @@ class Task(_Strict):
     kind: TaskKind = TaskKind.WORK
     demands: list[Demand] = Field(default_factory=list)
     modes: list[ExecutionMode] = Field(default_factory=list)
+    stand_state_id: str | None = None
     earliest_start: date | None = None
     latest_finish: date | None = None
     due_date: date | None = None
@@ -223,6 +224,8 @@ class Task(_Strict):
             data.pop("percent_complete", None)
         if isinstance(data, dict) and not data.get("modes"):
             data.pop("modes", None)
+        if isinstance(data, dict) and data.get("stand_state_id") is None:
+            data.pop("stand_state_id", None)
         return data
 
     def demands_for(self, mode_code: str | None) -> list[Demand]:
@@ -336,6 +339,24 @@ class TestArticle(_Strict):
     resource_id: str
 
 
+class StandState(_Strict):
+    """One setup of a stand: tooling, measurement mode, or a product configuration."""
+
+    id: str
+    resource_id: str
+    code: str
+    configuration_id: str | None = None
+
+
+class Changeover(_Strict):
+    """Working days to switch one stand from one state to another. Not part of the task duration."""
+
+    resource_id: str
+    from_state_id: str
+    to_state_id: str
+    duration_wd: int = Field(ge=0)
+
+
 class ExceptionReason(StrEnum):
     VACATION = "VACATION"
     MAINTENANCE = "MAINTENANCE"
@@ -433,6 +454,8 @@ class OKRProgram(_Strict):
     products: list[Product] = Field(default_factory=list)
     configurations: list[ProductConfiguration] = Field(default_factory=list)
     articles: list[TestArticle] = Field(default_factory=list)
+    stand_states: list[StandState] = Field(default_factory=list)
+    changeovers: list[Changeover] = Field(default_factory=list)
     capacity_exceptions: list[CapacityException] = Field(default_factory=list)
     baseline: Baseline | None = None
     freeze: FreezePolicy = Field(default_factory=FreezePolicy)
@@ -446,6 +469,17 @@ class OKRProgram(_Strict):
                 f"unknown program schema_version {self.schema_version!r}; this build reads {PROGRAM_SCHEMA}"
             )
         return self
+
+    @model_serializer(mode="wrap")
+    def _omit_empty_changeover(self, handler: Any) -> Any:
+        """Empty changeover lists are the programs saved before stands had states."""
+        data = handler(self)
+        if isinstance(data, dict):
+            if not data.get("stand_states"):
+                data.pop("stand_states", None)
+            if not data.get("changeovers"):
+                data.pop("changeovers", None)
+        return data
 
     @model_validator(mode="after")
     def _references(self) -> Self:
@@ -521,6 +555,7 @@ class OKRProgram(_Strict):
                 if task_id not in tasks:
                     issues.append(f"risk driver {driver.id} references unknown task {task_id}")
         _identity_issues(issues, self, projects, tasks, resources)
+        _stand_issues(issues, self, resources)
         if issues:
             raise ValueError("; ".join(issues))
         issues.extend(_graph_issues(self))
@@ -654,6 +689,73 @@ def _identity_issues(
             issues.append(
                 f"task {task.id} names test article {named.id} "
                 f"but does not occupy resource {named.resource_id}"
+            )
+
+
+def required_changeover(program: OKRProgram, resource_id: str, from_state: str, to_state: str) -> int:
+    """Working days to switch a stand. The same state takes none; a missing cell takes none."""
+    if from_state == to_state:
+        return 0
+    for row in program.changeovers:
+        if row.resource_id == resource_id and row.from_state_id == from_state and row.to_state_id == to_state:
+            return row.duration_wd
+    return 0
+
+
+def _stand_issues(issues: list[str], program: OKRProgram, resources: dict[str, Resource]) -> None:
+    _unique(issues, "stand state", [row.id for row in program.stand_states])
+    states = {row.id: row for row in program.stand_states}
+    seen: set[tuple[str, str, str]] = set()
+    changeover_stands = {row.resource_id for row in program.changeovers}
+    for row in program.stand_states:
+        resource = resources.get(row.resource_id)
+        if resource is None:
+            issues.append(f"stand state {row.id} references unknown resource {row.resource_id}")
+        elif resource.kind is not ResourceKind.STAND:
+            issues.append(f"stand state {row.id} resource {row.resource_id} is not a stand")
+        if row.configuration_id is not None and row.configuration_id not in {
+            item.id for item in program.configurations
+        }:
+            issues.append(f"stand state {row.id} references unknown configuration {row.configuration_id}")
+    for change in program.changeovers:
+        resource = resources.get(change.resource_id)
+        if resource is None or resource.kind is not ResourceKind.STAND:
+            issues.append(f"changeover references stand {change.resource_id} that is not a stand")
+        for end in (change.from_state_id, change.to_state_id):
+            named = states.get(end)
+            if named is None:
+                issues.append(f"changeover references unknown stand state {end}")
+            elif named.resource_id != change.resource_id:
+                issues.append(f"changeover state {end} belongs to another stand")
+        key = (change.resource_id, change.from_state_id, change.to_state_id)
+        if key in seen:
+            issues.append(f"duplicate changeover {key[1]} -> {key[2]} on {key[0]}")
+        seen.add(key)
+    for task in program.tasks:
+        if task.stand_state_id is None:
+            if any(demand.resource_id in changeover_stands for demand in task.all_demands()):
+                issues.append(
+                    f"task {task.id} uses a stand with changeover and needs a stand state"
+                    if not task.modes
+                    else f"task {task.id} cannot combine execution modes with stand changeover"
+                )
+            continue
+        named = states.get(task.stand_state_id)
+        if named is None:
+            issues.append(f"task {task.id} references unknown stand state {task.stand_state_id}")
+            continue
+        if task.modes:
+            issues.append(f"task {task.id} cannot combine execution modes with stand state {named.id}")
+        if not any(demand.resource_id == named.resource_id for demand in task.all_demands()):
+            issues.append(f"task {task.id} stand state {named.id} requires resource {named.resource_id}")
+        if (
+            named.configuration_id is not None
+            and task.configuration_id is not None
+            and named.configuration_id != task.configuration_id
+        ):
+            issues.append(
+                f"task {task.id} configuration {task.configuration_id} "
+                f"is incompatible with stand state {named.id}"
             )
 
 

@@ -12,5 +12,5 @@ CLAIM_LEVEL: Literal["experiment"] = "experiment"
 
 # SynAPS commit this SynAPS-ProgramPlan release is validated against (direct use, no fork).
 # Bump deliberately together with pyproject.toml; never float on branch tips.
-SYNAPS_COMMIT = "1feb50b33568cb86c1bfd12b9d7cd7247e17ee49"
+SYNAPS_COMMIT = "d4837ab395170f786fae40791ceda9fc4c9b191d"
 SYNAPS_REPO = "https://github.com/KonkovDV/SynAPS"
