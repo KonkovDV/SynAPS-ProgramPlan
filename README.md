@@ -1,5 +1,11 @@
 <p align="center">
   <img src="Logo.png" alt="SynAPS ProgramPlan" width="420">
+  <br><br>
+  <b>Презентация для ОДК · 19 слайдов</b>
+  <br><br>
+  <a href="SynAPS-ProgramPlan_ODK.pptx"><img src="https://img.shields.io/badge/PowerPoint-.pptx-D24726?style=for-the-badge&logo=microsoftpowerpoint&logoColor=white" alt="PowerPoint"></a>
+  &nbsp;
+  <a href="SynAPS-ProgramPlan_ODK.pdf"><img src="https://img.shields.io/badge/PDF-.pdf-B30B00?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="PDF"></a>
 </p>
 
 # SynAPS-ProgramPlan
