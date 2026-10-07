@@ -6,6 +6,8 @@
   <a href="SynAPS-ProgramPlan_ODK.pptx"><img src="https://img.shields.io/badge/PowerPoint-.pptx-D24726?style=for-the-badge&logo=microsoftpowerpoint&logoColor=white" alt="PowerPoint"></a>
   &nbsp;
   <a href="SynAPS-ProgramPlan_ODK.pdf"><img src="https://img.shields.io/badge/PDF-.pdf-B30B00?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="PDF"></a>
+  <br><br>
+  <a href="Video.mp4"><img src="https://img.shields.io/badge/Video-.mp4-111111?style=for-the-badge" alt="Video"></a>
 </p>
 
 # SynAPS-ProgramPlan
