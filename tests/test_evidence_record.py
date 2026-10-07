@@ -35,3 +35,19 @@ def test_show_directory_matches_the_evidence_record() -> None:
     module = _script()
     evidence = json.loads((ROOT / "evidence.json").read_text(encoding="utf-8"))
     assert module.demo_record(demo) == evidence["demo"]
+
+
+def test_a_time_limited_difference_is_a_note_and_a_fixed_one_fails() -> None:
+    import copy
+
+    module = _script()
+    recorded = json.loads((ROOT / "evidence.json").read_text(encoding="utf-8"))["demo"]
+    moved_b = copy.deepcopy(recorded)
+    moved_b["plans"]["B"]["finish"] = "2029-01-24"
+    failures, notes = module.split_demo_differences(recorded, moved_b)
+    assert failures == []
+    assert notes and "demo.plans.B.finish" in notes[0]
+    changed_e2 = copy.deepcopy(recorded)
+    changed_e2["plans"]["E2"]["tardiness_wd"] = 5
+    failures, _ = module.split_demo_differences(recorded, changed_e2)
+    assert failures and "demo.plans.E2.tardiness_wd" in failures[0]

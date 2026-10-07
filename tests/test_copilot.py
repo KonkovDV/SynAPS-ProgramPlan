@@ -66,3 +66,21 @@ def test_yandex_body_uses_the_folder_model() -> None:
     body = yandex_body("b1gfolder", "yandexgpt", [{"role": "user", "content": "вопрос"}])
     assert body["model"] == "gpt://b1gfolder/yandexgpt/latest"
     assert body["temperature"] == 0
+
+
+def test_a_figure_the_cited_facts_do_not_contain_is_dropped() -> None:
+    facts = [Fact("task:a", "работа a с 2026-10-05 по 2026-10-07, сдвиг 2 раб. дн.")]
+
+    def complete(_messages: list[dict[str, str]]) -> str:
+        return (
+            '{"statements":['
+            '{"text":"работа a завершится 12.10.2026","fact_ids":["task:a"]},'
+            '{"text":"работа a начнётся 05.10.2026 и сдвинута на 2 раб. дн.","fact_ids":["task:a"]}'
+            "]}"
+        )
+
+    answer = ask("когда работа a", facts, complete)
+    assert [row.text for row in answer.statements] == [
+        "работа a начнётся 05.10.2026 и сдвинута на 2 раб. дн."
+    ]
+    assert answer.dropped == 1

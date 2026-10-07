@@ -202,7 +202,9 @@ def read_xer(
                 action="approximated",
             )
             link_type = DependencyType.FS
-        lag = round(_float(row.get("lag_hr_cnt")) / task_hpd.get(row.get("pred_task_id", ""), 8.0))
+        exact_lag = _float(row.get("lag_hr_cnt")) / task_hpd.get(row.get("pred_task_id", ""), 8.0)
+        lag = round(exact_lag)
+        report.rounded(exact_lag, lag, label="задержка", object_id=f"{src}->{dst}")
         is_cross = row.get("pred_proj_id", row.get("proj_id")) != row.get("proj_id")
         edge = Dependency(
             src_task_id=src,
@@ -256,10 +258,11 @@ def _task(
     report: ImportReport,
 ) -> Task:
     kind = row.get("task_type", "TT_Task")
-    duration = round(_float(row.get("target_drtn_hr_cnt")) / hpd)
+    exact_duration = _float(row.get("target_drtn_hr_cnt")) / hpd
+    duration = round(exact_duration)
     milestone = kind in ("TT_Mile", "TT_FinMile")
     if not milestone and duration == 0:
-        if _float(row.get("target_drtn_hr_cnt")) > 0:
+        if exact_duration > 0:
             duration = 1
             report.note(
                 f"{task_id}: длительность < 1 раб. дня округлена до 1",
@@ -275,6 +278,10 @@ def _task(
                 object_id=task_id,
                 action="approximated",
             )
+    elif not milestone:
+        report.rounded(exact_duration, duration, label="длительность", object_id=task_id)
+    if milestone:
+        duration = 0
     if milestone:
         duration = 0
     status_code = row.get("status_code", "TK_NotStart")
@@ -294,7 +301,10 @@ def _task(
     elif status_code == "TK_Active":
         if act_start:
             status = TaskStatus.IN_PROGRESS
-            remaining = max(0, round(_float(row.get("remain_drtn_hr_cnt")) / hpd))
+            if row.get("remain_drtn_hr_cnt"):
+                exact_remaining = _float(row.get("remain_drtn_hr_cnt")) / hpd
+                remaining = max(0, round(exact_remaining))
+                report.rounded(exact_remaining, remaining, label="остаток", object_id=task_id)
         else:
             report.note(
                 f"{task_id}: статус «начата» без фактического старта — оставлена плановой",
@@ -321,6 +331,12 @@ def _task(
             pinned = True
         elif ctype in ("CS_MEO", "CS_MANDFIN"):
             latest = when
+            report.note(
+                f"{task_id}: ограничение {ctype} (окончание на дату) приближено окончанием не позже",
+                code="CONSTRAINT_APPROXIMATED",
+                object_id=task_id,
+                action="approximated",
+            )
         elif ctype in _IGNORED_CONSTRAINTS:
             label = _IGNORED_CONSTRAINTS[ctype]
             report.note(
@@ -394,7 +410,9 @@ def _resources(
                 action="skipped",
             )
             continue
-        units = max(1, round(rates.get(row["rsrc_id"], 1.0) * FTE_UNITS))
+        exact_units = rates.get(row["rsrc_id"], 1.0) * FTE_UNITS
+        units = max(1, round(exact_units))
+        report.rounded(exact_units, units, label="мощность", unit="ед.", object_id=name, code="UNITS_ROUNDED")
         if rtype == "RT_Equip":
             kind = ResourceKind.EQUIPMENT
         else:
@@ -413,7 +431,11 @@ def _resources(
         assigned = by_id.get(row.get("rsrc_id", ""))
         if assigned is None or row.get("proj_id") not in code_of:
             continue
-        units = max(1, round(_float(row.get("target_qty_per_hr"), 1.0) * FTE_UNITS))
+        exact_units = _float(row.get("target_qty_per_hr"), 1.0) * FTE_UNITS
+        units = max(1, round(exact_units))
+        report.rounded(
+            exact_units, units, label="назначение", unit="ед.", object_id=assigned.id, code="UNITS_ROUNDED"
+        )
         if units > assigned.capacity_units:
             report.note(
                 f"задача {row.get('task_id')}: назначение {assigned.code} больше доступного — ограничено",

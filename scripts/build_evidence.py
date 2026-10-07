@@ -4,6 +4,12 @@
 test suite. CI does not re-solve that directory: the Deadlines alternative is
 limited to 8 seconds, so another machine can produce another plan.
 
+When a demonstration directory is given, the check separates two kinds of
+difference. A plan that is only FEASIBLE within the time limit, and the risk
+figures computed from it, depend on the machine: their differences are printed
+as notes and do not fail the check. Everything else (OPTIMAL and heuristic
+plans, the conflicts, the infeasibility dates, the program hashes) must match.
+
     python scripts/build_evidence.py --demo-dir out/demo
     python scripts/build_evidence.py --check
     python scripts/build_evidence.py --check --demo-dir out/demo
@@ -272,7 +278,32 @@ def _diff(path: str, left: Any, right: Any, out: list[str]) -> None:
     out.append(f"{path}: evidence {left!r} != measured {right!r}")
 
 
-def check(demo_dir: Path | None) -> list[str]:
+# Figures that follow from a time-limited (FEASIBLE) plan: they move with the machine.
+_TIME_LIMITED_FIELDS = ("risk_p80", "deadlines_met_share", "top_driver_p80_gain_wd")
+
+
+def _time_limited(path: str, recorded: dict[str, Any]) -> bool:
+    if path in {f"demo.{name}" for name in _TIME_LIMITED_FIELDS}:
+        return True
+    if path.startswith("demo.plans."):
+        plan_id = path[len("demo.plans.") :].split(".", 1)[0]
+        return recorded["plans"].get(plan_id, {}).get("claim") == "FEASIBLE"
+    return False
+
+
+def split_demo_differences(recorded: dict[str, Any], measured: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """(failures, notes): machine-independent differences fail, time-limited ones are notes."""
+    lines: list[str] = []
+    _diff("demo", recorded, measured, lines)
+    failures: list[str] = []
+    notes: list[str] = []
+    for line in lines:
+        path = line.split(":", 1)[0]
+        (notes if _time_limited(path, recorded) else failures).append(line)
+    return failures, notes
+
+
+def check(demo_dir: Path | None, notes: list[str] | None = None) -> list[str]:
     evidence = json.loads(EVIDENCE.read_text(encoding="utf-8"))
     gaps = document_gaps(evidence) + policy_gaps()
     tests = evidence["tests"]
@@ -282,7 +313,10 @@ def check(demo_dir: Path | None) -> list[str]:
     if collected != tests["passed"]:
         gaps.append(f"collected {collected} tests, evidence.json says {tests['passed']}")
     if demo_dir is not None:
-        _diff("demo", evidence["demo"], demo_record(demo_dir), gaps)
+        failures, measured_notes = split_demo_differences(evidence["demo"], demo_record(demo_dir))
+        gaps.extend(failures)
+        if notes is not None:
+            notes.extend(measured_notes)
     return gaps
 
 
@@ -307,7 +341,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
     if args.check:
-        gaps = check(args.demo_dir)
+        notes: list[str] = []
+        gaps = check(args.demo_dir, notes)
+        for line in notes:
+            sys.stdout.write(f"note (time-limited plan, depends on the machine): {line}\n")
         if gaps:
             sys.stderr.write("evidence check failed:\n" + "\n".join(gaps) + "\n")
             return 1

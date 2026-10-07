@@ -623,15 +623,25 @@ class Requirement:
     text: str
 
 
+_LATEST_SUFFIX = "#latest_finish"
+
+
 def relaxable_requirements(program: OKRProgram) -> list[Requirement]:
     out: list[Requirement] = []
     for task in program.tasks:
         if task.status is TaskStatus.DONE:
             continue
-        if task.hard_finish is not None:
+        # Each bound is its own requirement: relaxing one must not relax the other.
+        if task.deadline is not None:
+            out.append(
+                Requirement("deadline", task.id, f"директивный срок «{task.name}» {task.deadline:%d.%m.%Y}")
+            )
+        if task.latest_finish is not None:
             out.append(
                 Requirement(
-                    "deadline", task.id, f"директивный срок «{task.name}» {task.hard_finish:%d.%m.%Y}"
+                    "deadline",
+                    f"{task.id}{_LATEST_SUFFIX}",
+                    f"окончание не позже {task.latest_finish:%d.%m.%Y} у «{task.name}»",
                 )
             )
         if task.pinned:
@@ -684,7 +694,9 @@ def relax(program: OKRProgram, dropped: list[Requirement]) -> OKRProgram:
         by_kind[item.kind].add(item.ref)
     for task in data["tasks"]:
         if task["id"] in by_kind["deadline"]:
-            task["deadline"] = task["latest_finish"] = None
+            task["deadline"] = None
+        if f"{task['id']}{_LATEST_SUFFIX}" in by_kind["deadline"]:
+            task["latest_finish"] = None
         if task["id"] in by_kind["pinned"]:
             task["pinned"] = False
         if task["id"] in by_kind["shift_limit"]:
@@ -792,8 +804,10 @@ def _needed_relaxation(program: OKRProgram, item: Requirement, config: SolveConf
         out["alone_sufficient"] = False if relaxed.outcome.claim.value == "INFEASIBLE" else None
         return out
     if item.kind == "deadline":
-        finish: date = relaxed.task(item.ref).finish
-        target = program.task(item.ref).hard_finish
+        task_id = item.ref.removesuffix(_LATEST_SUFFIX)
+        finish: date = relaxed.task(task_id).finish
+        bound = program.task(task_id)
+        target = bound.latest_finish if item.ref.endswith(_LATEST_SUFFIX) else bound.deadline
     else:
         finish = max(r.finish for r in relaxed.tasks if r.project_id == item.ref)
         target = next(p.deadline for p in program.projects if p.id == item.ref)

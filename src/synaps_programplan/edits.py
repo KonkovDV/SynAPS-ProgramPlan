@@ -25,15 +25,32 @@ from synaps_programplan.result import PlanResult, Severity, TaskPlan
 ReplanMode = Literal["stable", "optimise"]
 
 
-def _move_row(compiled: Compiled, refs: dict[str, int], row: TaskPlan, new_start: date) -> TaskPlan:
+def _move_row(
+    compiled: Compiled, refs: dict[str, int], row: TaskPlan, new_start: date, status_date: date
+) -> TaskPlan:
+    """Row on ``new_start``. A date the working-day axis cannot hold is refused, never moved silently."""
     axis = compiled.axis
+    if new_start < status_date:
+        raise ValueError(
+            f"{row.task_id}: дата {new_start.isoformat()} раньше даты статуса {status_date.isoformat()}"
+        )
+    last_day = axis.days[-1]
     if row.is_milestone:
+        if new_start > last_day:
+            raise ValueError(f"{row.task_id}: дата {new_start.isoformat()} позже горизонта программы")
         boundary = max(1, axis.boundary_after(new_start))
         start_index = end_index = boundary
         start = finish = axis.event_date(boundary)
     else:
-        start_index = min(axis.index_on_or_after(new_start), len(axis) - 1)
+        start_index = axis.index_on_or_after(new_start)
+        if start_index >= len(axis):
+            raise ValueError(f"{row.task_id}: дата {new_start.isoformat()} позже горизонта программы")
         end_index = start_index + row.duration_wd
+        if end_index > len(axis):
+            raise ValueError(
+                f"{row.task_id}: работа не помещается в горизонт программы "
+                f"(последний рабочий день {last_day.isoformat()})"
+            )
         start = axis.start_date(start_index)
         finish = axis.finish_date(start_index, end_index)
     shift = start_index - refs[row.task_id] if row.task_id in refs else None
@@ -58,7 +75,9 @@ def apply_moves(program: OKRProgram, base: PlanResult, moves: dict[str, date]) -
     compiled = compile_program(program)
     refs = reference_index(compiled, program)
     rows = [
-        _move_row(compiled, refs, row, moves[row.task_id]) if row.task_id in moves else row.model_copy()
+        _move_row(compiled, refs, row, moves[row.task_id], program.program.planning_start)
+        if row.task_id in moves
+        else row.model_copy()
         for row in base.tasks
     ]
     _mark_critical(program, compiled, rows)

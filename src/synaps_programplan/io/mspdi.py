@@ -102,6 +102,25 @@ class ImportReport:
         self.notes.append(text)
         self.losses.append(ImportLoss(code=code, object_id=object_id, action=action, message=text))
 
+    def rounded(
+        self,
+        exact: float,
+        value: int,
+        *,
+        label: str,
+        object_id: str,
+        unit: str = "раб. дн.",
+        code: str = "DURATION_ROUNDED",
+    ) -> None:
+        """Record that ``exact`` was stored as ``value``. A value that is already whole is no loss."""
+        if abs(exact - value) > 1e-9:
+            self.note(
+                f"{object_id}: {label} {exact:g} {unit} округлено до {value} {unit}",
+                code=code,
+                object_id=object_id,
+                action="approximated",
+            )
+
     def blocking(self) -> list[ImportLoss]:
         return [item for item in self.losses if item.action != "info"]
 
@@ -215,7 +234,8 @@ def _task(
     task_id = f"{prefix}{uid}"
     name = _text(node, "Name") or task_id
     minutes = duration_minutes(_text(node, "Duration"))
-    duration = round(minutes / minutes_per_day)
+    exact_duration = minutes / minutes_per_day
+    duration = round(exact_duration)
     milestone = _text(node, "Milestone") == "1" or minutes == 0
     if milestone:
         duration = 0
@@ -227,6 +247,8 @@ def _task(
             object_id=task_id,
             action="approximated",
         )
+    else:
+        report.rounded(exact_duration, duration, label="длительность", object_id=task_id)
     start, finish = _date(_text(node, "Start")), _date(_text(node, "Finish"))
     actual_start, actual_finish = _date(_text(node, "ActualStart")), _date(_text(node, "ActualFinish"))
     raw_percent = _text(node, "PercentComplete")
@@ -240,7 +262,10 @@ def _task(
     remaining = None
     if status is TaskStatus.IN_PROGRESS:
         remaining_minutes = duration_minutes(_text(node, "RemainingDuration"))
-        remaining = max(1, round(remaining_minutes / minutes_per_day)) if remaining_minutes else None
+        if remaining_minutes:
+            exact_remaining = remaining_minutes / minutes_per_day
+            remaining = max(1, round(exact_remaining))
+            report.rounded(exact_remaining, remaining, label="остаток", object_id=task_id)
         actual_finish = None
     constraint = _text(node, "ConstraintType") or "0"
     constraint_date = _date(_text(node, "ConstraintDate"))
@@ -255,6 +280,12 @@ def _task(
     elif constraint == "3":
         latest = constraint_date
         earliest = start
+        report.note(
+            f"{task_id}: ограничение «окончание на дату» приближено окончанием не позже",
+            code="CONSTRAINT_APPROXIMATED",
+            object_id=task_id,
+            action="approximated",
+        )
     elif constraint in ("1", "5", "6"):
         label = {"1": "ALAP", "5": "SNLT", "6": "FNET"}[constraint]
         report.note(
@@ -339,9 +370,12 @@ def _links(
         lag_raw = float(_text(link, "LinkLag") or 0)
         lag_format = _text(link, "LagFormat") or "7"
         if lag_format in _PERCENT_FORMATS:
-            lag = round(durations[src] * lag_raw / 100)
+            exact_lag = durations[src] * lag_raw / 100
+            lag = round(exact_lag)
+            report.rounded(exact_lag, lag, label="задержка", object_id=f"{src}->{dst}")
         else:
-            lag = round(lag_raw / 10 / minutes_per_day)
+            exact_lag = lag_raw / 10 / minutes_per_day
+            lag = round(exact_lag)
             if lag_format in _ELAPSED_FORMATS:
                 lag = round(lag * 5 / 7)
                 report.note(
@@ -350,6 +384,8 @@ def _links(
                     object_id=f"{src}->{dst}",
                     action="approximated",
                 )
+            else:
+                report.rounded(exact_lag, lag, label="задержка", object_id=f"{src}->{dst}")
         out.append(Dependency(src_task_id=src, dst_task_id=dst, type=kind, lag_wd=lag))
     return out
 
@@ -373,7 +409,9 @@ def _resources(
                 action="skipped",
             )
             continue
-        units = max(1, round(float(_text(item, "MaxUnits") or 1) * FTE_UNITS))
+        exact_units = float(_text(item, "MaxUnits") or 1) * FTE_UNITS
+        units = max(1, round(exact_units))
+        report.rounded(exact_units, units, label="мощность", unit="ед.", object_id=name, code="UNITS_ROUNDED")
         kind = ResourceKind.GROUP if units > FTE_UNITS else ResourceKind.PERSON
         resource = Resource(id=f"{prefix}r{uid}", kind=kind, code=name, name=name, capacity_units=units)
         resources.append(resource)
@@ -385,7 +423,11 @@ def _resources(
         if res_uid not in by_uid:
             continue
         task_id = f"{prefix}{_text(item, 'TaskUID')}"
-        units = max(1, round(float(_text(item, "Units") or 1) * FTE_UNITS))
+        exact_units = float(_text(item, "Units") or 1) * FTE_UNITS
+        units = max(1, round(exact_units))
+        report.rounded(
+            exact_units, units, label="назначение", unit="ед.", object_id=task_id, code="UNITS_ROUNDED"
+        )
         resource = by_uid[res_uid]
         if units > resource.capacity_units:
             report.note(

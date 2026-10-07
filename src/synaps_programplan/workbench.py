@@ -149,10 +149,14 @@ class Workbench:
 
     def accepted(self, scenario_id: str) -> PlanResult:
         result = self.find(scenario_id)
-        error = attestation_error(program_for_plan(self.program, result), result)
+        error = attestation_error(self.program_of(result), result)
         if error:
             raise HTTPException(status_code=409, detail=error)
         return result
+
+    def program_of(self, result: PlanResult) -> OKRProgram:
+        """The program a plan was solved on: the changed one for a what-if plan."""
+        return program_for_plan(self.program, result)
 
     def data(self, principal: Principal) -> dict[str, Any]:
         payload = report_data(self.program, self.plans, self.analysis, self.witness, self.risk)
@@ -255,7 +259,7 @@ def create_app(bench: Workbench) -> FastAPI:
         _allowed(who, "check")
         base = bench.accepted(body.scenario)
         try:
-            return check_moves(bench.program, base, body.moves)
+            return check_moves(bench.program_of(base), base, body.moves)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -266,6 +270,11 @@ def create_app(bench: Workbench) -> FastAPI:
             raise HTTPException(status_code=422, detail="no edits to re-plan with")
         with bench._lock:
             base = bench.accepted(body.scenario)
+            if base.metadata.get("what_if"):
+                raise HTTPException(
+                    status_code=422,
+                    detail="правка варианта «что если» не поддерживается: он посчитан на другой программе",
+                )
             bench._edits += 1
             scenario_id = f"R{bench._edits}"
             label = f"{scenario_id} · правка {base.scenario_id}: закреплено {len(body.moves)}"

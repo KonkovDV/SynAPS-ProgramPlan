@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -20,6 +21,8 @@ from synaps_programplan.result import PlanResult
 
 YANDEX_CHAT_URL = "https://ai.api.cloud.yandex.net/v1/chat/completions"
 _MAX_FACTS = 200
+_DATE = re.compile(r"\b(\d{2})\.(\d{2})\.(\d{4})\b|\b(\d{4})-(\d{2})-(\d{2})\b")
+_NUMBER = re.compile(r"\d+")
 
 _SYSTEM = (
     "Ты готовишь записку планировщику только по переданным фактам принятого плана. "
@@ -131,8 +134,24 @@ def yandex_complete(key: str, folder: str, model: str, messages: list[dict[str, 
         raise ValueError("Yandex Cloud returned no message") from exc
 
 
+def numbers_in(text: str) -> set[str]:
+    """Dates as ISO and other integers as plain numbers: the figures a sentence asserts."""
+    found: set[str] = set()
+    for match in _DATE.finditer(text):
+        if match.group(1):
+            found.add(f"{match.group(3)}-{match.group(2)}-{match.group(1)}")
+        else:
+            found.add(f"{match.group(4)}-{match.group(5)}-{match.group(6)}")
+    found.update(str(int(item)) for item in _NUMBER.findall(_DATE.sub(" ", text)))
+    return found
+
+
 def ask(question: str, facts: list[Fact], complete: Callable[[list[dict[str, str]]], str]) -> Answer:
-    """Keep only sentences whose fact ids are in ``facts``. No facts, no request."""
+    """Keep only sentences that cite known facts and assert no figure those facts lack.
+
+    No facts, no request. A sentence with an unknown fact id is dropped, and so is
+    one whose dates or numbers do not appear in the facts it cites.
+    """
     if not facts:
         raise ValueError("the language model is refused without plan facts")
     known = {fact.id: fact.text for fact in facts}
@@ -147,6 +166,10 @@ def ask(question: str, facts: list[Fact], complete: Callable[[list[dict[str, str
     for text, cited in parsed:
         ids = [item for item in cited if item in known]
         if not text.strip() or not ids or len(ids) != len(cited):
+            dropped += 1
+            continue
+        allowed = set().union(*(numbers_in(known[item]) for item in ids))
+        if not numbers_in(text) <= allowed:
             dropped += 1
             continue
         kept.append(Statement(text.strip(), ids))

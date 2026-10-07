@@ -144,9 +144,9 @@ def _task(
 ) -> tuple[Task, int]:
     uid = str(int(node.getUniqueID()))
     task_id = f"{prefix}{uid}"
-    days, elapsed = _working_days(node.getDuration(), minutes_per_day)
-    milestone = bool(node.getMilestone()) or days == 0
-    duration = 0 if milestone else days
+    exact_days, elapsed = _exact_days(node.getDuration(), minutes_per_day)
+    milestone = bool(node.getMilestone()) or exact_days == 0
+    duration = 0 if milestone else int(round(exact_days))
     if not milestone and duration == 0:
         duration = 1
         report.note(
@@ -155,6 +155,8 @@ def _task(
             object_id=task_id,
             action="approximated",
         )
+    elif not milestone and not elapsed:
+        report.rounded(exact_days, duration, label="длительность", object_id=task_id)
     if elapsed:
         report.note(
             f"{task_id}: календарная длительность приближена рабочими днями ({duration})",
@@ -171,8 +173,11 @@ def _task(
         status = TaskStatus.IN_PROGRESS
     remaining = None
     if status is TaskStatus.IN_PROGRESS:
-        left, _ = _working_days(node.getRemainingDuration(), minutes_per_day)
+        exact_left, left_elapsed = _exact_days(node.getRemainingDuration(), minutes_per_day)
+        left = int(round(exact_left))
         remaining = max(1, left) if left else None
+        if exact_left > 0 and not left_elapsed:
+            report.rounded(exact_left, left, label="остаток", object_id=task_id)
         actual_finish = None
     earliest, latest, pinned = _constraint(node, task_id, report)
     deadline = _py_date(node.getDeadline())
@@ -205,6 +210,12 @@ def _constraint(node: Any, task_id: str, report: ImportReport) -> tuple[date | N
     if kind in ("MUST_START_ON", "START_ON"):
         return when, None, True
     if kind in ("MUST_FINISH_ON", "FINISH_ON"):
+        report.note(
+            f"{task_id}: ограничение {kind} (окончание на дату) приближено окончанием не позже",
+            code="CONSTRAINT_APPROXIMATED",
+            object_id=task_id,
+            action="approximated",
+        )
         return _py_date(node.getStart()), when, False
     if kind == "START_NO_EARLIER_THAN":
         return when, None, False
@@ -253,7 +264,10 @@ def _links(
                 )
                 continue
             kind = DependencyType(str(relation.getType() or "FS"))
-            lag, elapsed = _working_days(relation.getLag(), minutes_per_day)
+            exact_lag, elapsed = _exact_days(relation.getLag(), minutes_per_day)
+            lag = int(round(exact_lag))
+            if not elapsed:
+                report.rounded(exact_lag, lag, label="задержка", object_id=f"{src}->{dst}")
             if elapsed:
                 report.note(
                     f"{src}->{dst}: календарный лаг приближён рабочими днями ({lag})",
@@ -282,7 +296,7 @@ def _resources(
                 action="skipped",
             )
             continue
-        units = _fte(item.getMaxUnits())
+        units = _fte(item.getMaxUnits(), report, str(item.getName()))
         kind = ResourceKind.EQUIPMENT if kind_name == "NON_LABOR" else ResourceKind.PERSON
         if kind is ResourceKind.PERSON and units > FTE_UNITS:
             kind = ResourceKind.GROUP
@@ -303,22 +317,26 @@ def _resources(
         found = by_uid.get(int(resource_node.getUniqueID() or 0))
         if found is None or bool(task_node.getSummary()):
             continue
-        units = min(_fte(item.getUnits()), found.capacity_units)
+        units = min(_fte(item.getUnits(), report, found.code), found.capacity_units)
         task_id = f"{prefix}{int(task_node.getUniqueID())}"
         demands.setdefault(task_id, []).append(Demand(resource_id=found.id, units=units))
     return resources, demands
 
 
-def _fte(raw: Any) -> int:
+def _fte(raw: Any, report: ImportReport, object_id: str) -> int:
     """MPXJ reports units as a percentage (100 = full time); some files use a fraction."""
     value = float(raw or 100)
     fraction = value / 100 if value > 10 else value
-    return max(1, round(fraction * FTE_UNITS))
+    exact = fraction * FTE_UNITS
+    units = max(1, round(exact))
+    report.rounded(exact, units, label="мощность", unit="ед.", object_id=object_id, code="UNITS_ROUNDED")
+    return units
 
 
-def _working_days(duration: Any, minutes_per_day: float) -> tuple[int, bool]:
+def _exact_days(duration: Any, minutes_per_day: float) -> tuple[float, bool]:
+    """Working days as a fraction, and whether the unit was elapsed time (approximated)."""
     if duration is None:
-        return 0, False
+        return 0.0, False
     unit = str(duration.getUnits())
     amount = float(duration.getDuration())
     per_unit = {
@@ -328,12 +346,12 @@ def _working_days(duration: Any, minutes_per_day: float) -> tuple[int, bool]:
         "y": minutes_per_day * 250,
     }.get(unit, _MINUTES.get(unit))
     if per_unit is None:
-        return 0, unit.startswith("e")
+        return 0.0, unit.startswith("e")
     days = amount * per_unit / minutes_per_day
     elapsed = unit.startswith("e")
     if elapsed:
         days *= 5 / 7
-    return int(round(days)), elapsed
+    return days, elapsed
 
 
 def _py_date(value: Any) -> date | None:

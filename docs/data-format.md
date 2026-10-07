@@ -233,13 +233,15 @@ XML разбирается безопасным парсером (`defusedxml`):
 | `SUMMARY_LINK_SKIPPED` | `skipped` | Связь с суммарной задачей MS Project |
 | `PREDECESSOR_MISSING` | `skipped` | Связь ссылается на работу, которой нет в файле |
 | `MATERIAL_RESOURCE` | `skipped` | Материальный ресурс: в модели такого нет |
-| `DURATION_ROUNDED` | `approximated` | Длительность не кратна рабочему дню и округлена |
+| `DURATION_ROUNDED` | `approximated` | Длительность, задержка или остаток не кратны рабочему дню и округлены. Значение меньше дня округляется до одного дня |
 | `ELAPSED_DURATION` | `approximated` | MPP: календарная длительность приближена рабочими днями |
 | `ELAPSED_LAG` | `approximated` | Календарный лаг связи приближён рабочими днями |
 | `ZERO_DURATION_AS_MILESTONE` | `approximated` | Primavera: работа нулевой длительности импортирована как веха |
 | `STATUS_WITHOUT_DATES` | `approximated` | Primavera: статус «завершена» без фактических дат; работа осталась плановой |
 | `UNKNOWN_LINK_TYPE` | `approximated` | Primavera: тип связи неизвестен, принят FS |
 | `ASSIGNMENT_CLAMPED` | `clamped` | Назначение больше ёмкости ресурса; значение урезано до неё (в MS Project — до `MaxUnits`) |
+| `UNITS_ROUNDED` | `approximated` | Мощность или назначение не кратны 0,1 ставки и округлены |
+| `CONSTRAINT_APPROXIMATED` | `approximated` | «Окончание на дату» приближено окончанием «не позже»: Primavera `CS_MEO`, `CS_MANDFIN`; MS Project `FINISH_ON` и `MustFinishOn` (код 3) |
 | `BASELINE_NOT_IN_FILE` | `info` | Primavera: базового плана в файле нет, эталоном служат даты текущего плана |
 | `ALIAS_APPLIED` | `info` | Ресурсы сведены по таблице соответствий `--aliases` |
 | `SIMILAR_RESOURCE` | `info` | Похожие имена без строки в таблице соответствий; ресурсы не сведены |
