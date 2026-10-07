@@ -98,7 +98,7 @@ SynAPS-ProgramPlan doctor --demo out/demo
 SynAPS-ProgramPlan serve out/demo/program.json out/demo/plan_A.json out/demo/plan_D.json --journal out/demo/decisions.jsonl --risk-runs 40
 ```
 
-`demo` spends about a minute building the demonstration in the next section. `doctor` computes nothing: it checks the install and matches every built plan against the programme by hash. Exit code 0 means the machine is ready. `serve` opens the planner's desk at `http://127.0.0.1:8765/`. It is the same report, and from it you edit the plan, reschedule, record a decision and keep the journal.
+`demo` builds the demonstration in the next section. `doctor` computes nothing: it checks the install and matches every built plan against the programme by hash. Exit code 0 means the machine is ready. `serve` opens the planner's desk at `http://127.0.0.1:8765/`. It is the same report, and from it you edit the plan, reschedule, record a decision and keep the journal.
 
 ## Demonstration
 
