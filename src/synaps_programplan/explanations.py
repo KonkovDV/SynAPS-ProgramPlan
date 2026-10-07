@@ -23,8 +23,8 @@ from typing import Any
 from synaps_programplan.compiler import Compiled, anchor_is_end_dst, anchor_is_end_src, compile_program
 from synaps_programplan.evidence import fingerprint
 from synaps_programplan.model import OKRProgram, TaskStatus
-from synaps_programplan.planner import Adjustments, SolveConfig, adjustments_of, plan
-from synaps_programplan.result import Claim, Explanation, PlanResult, TaskPlan
+from synaps_programplan.planner import Adjustments, SolveConfig, adjustments_of, plan, plan_hash
+from synaps_programplan.result import CauseKind, Claim, Explanation, ExplanationFact, PlanResult, TaskPlan
 
 _WINDOW_TEXT = {
     "status_date": "не может начаться раньше даты статуса программы",
@@ -39,6 +39,30 @@ _WINDOW_TEXT = {
 }
 
 
+@dataclass(frozen=True)
+class _Cause:
+    code: str
+    refs: list[str]
+    text: str
+    kind: CauseKind
+    resource_id: str | None = None
+    blocker_task_id: str | None = None
+    dates: tuple[str, ...] = ()
+
+
+_WINDOW_KIND = {
+    "status_date": CauseKind.STATUS_DATE,
+    "earliest_start": CauseKind.EARLIEST_START,
+    "shift_limit": CauseKind.BASELINE,
+    "pinned": CauseKind.BASELINE,
+    "frozen": CauseKind.FREEZE_WINDOW,
+    "in_progress": CauseKind.IN_PROGRESS,
+    "scenario": CauseKind.BASELINE,
+}
+
+_RESERVED = frozenset({CauseKind.SETUP_TRANSITION, CauseKind.MODE_SELECTION})
+
+
 @dataclass
 class _Ctx:
     program: OKRProgram
@@ -49,7 +73,8 @@ class _Ctx:
     users: dict[str, list[TaskPlan]]
     names: dict[str, str]
     projects: dict[str, str]
-    cache: dict[str, tuple[str, list[str], str]] = field(default_factory=dict)
+    articles: set[str] = field(default_factory=set)
+    cache: dict[str, _Cause] = field(default_factory=dict)
 
 
 def explain(
@@ -73,8 +98,10 @@ def explain(
     ]
     targets.sort(key=lambda r: (-abs(r.shift_wd or 0), r.task_id))
     out: list[Explanation] = []
+    stamped_plan = str(result.evidence.get("plan_hash") or plan_hash(result))
+    stamped_input = str(result.evidence.get("input_hash") or fingerprint(program))
     for row in targets[: limit or len(targets)]:
-        code, refs, text = _cause(ctx, row.task_id)
+        cause = _cause(ctx, row.task_id)
         chain = _chain(ctx, row.task_id)
         shift = row.shift_wd or 0
         head = f"«{row.name}»"
@@ -84,17 +111,34 @@ def explain(
             head += f" перенесена на {-shift} раб. дн. раньше"
         root = ""
         if len(chain) > 1:
-            root_code, _, root_text = _cause(ctx, chain[-1])
-            if root_code not in ("DEPENDENCY", "CROSS_PROJECT_DEPENDENCY", "CYCLE_GUARD"):
-                root = f"; первопричина через {len(chain) - 1} зв.: «{ctx.names[chain[-1]]}» — {root_text}"
+            root_cause = _cause(ctx, chain[-1])
+            if root_cause.code not in ("DEPENDENCY", "CROSS_PROJECT_DEPENDENCY", "CYCLE_GUARD"):
+                root = (
+                    f"; первопричина через {len(chain) - 1} зв.: «{ctx.names[chain[-1]]}» — {root_cause.text}"
+                )
+        dates = [row.start.isoformat(), *cause.dates]
+        seen: list[str] = []
+        for value in dates:
+            if value not in seen:
+                seen.append(value)
+        blocker = cause.blocker_task_id
         out.append(
             Explanation(
                 task_id=row.task_id,
                 shift_wd=shift,
-                cause_code=code,
-                cause_refs=refs,
+                cause_code=cause.code,
+                cause_refs=cause.refs,
                 chain=chain,
-                text=f"{head}: {text}{root}",
+                text=f"{head}: {cause.text}{root}",
+                fact=ExplanationFact(
+                    kind=cause.kind,
+                    resource_id=cause.resource_id,
+                    project_id=ctx.projects.get(blocker, row.project_id) if blocker else row.project_id,
+                    blocker_task_id=blocker,
+                    dates=seen,
+                    plan_hash=stamped_plan,
+                    input_hash=stamped_input,
+                ),
             )
         )
     return out
@@ -121,9 +165,88 @@ def explanation_gaps(program: OKRProgram, result: PlanResult) -> list[str]:
             and item.shift_wd == again.shift_wd
             and item.text == again.text
         )
+        if item.fact is not None and item.fact != again.fact:
+            same = False
         if not same:
             gaps.append(f"{item.task_id}: текст не совпадает с фактами плана")
     return gaps
+
+
+def fact_errors(program: OKRProgram, result: PlanResult) -> list[str]:
+    """Each stored fact must name the plan's own start date, hashes and blocker.
+
+    A file written before typed facts is not failed here: this checks facts
+    that are present, and a fresh ``explain`` always writes one.
+    """
+    if not result.outcome.ok:
+        return []
+    live_input = fingerprint(program)
+    live_plan = plan_hash(result)
+    rows = {row.task_id: row for row in result.tasks}
+    projects = {project.id for project in program.projects}
+    resources = {resource.id for resource in program.resources}
+    incoming: dict[str, set[str]] = defaultdict(set)
+    for edge in program.dependencies:
+        incoming[edge.dst_task_id].add(edge.src_task_id)
+    errors: list[str] = []
+    covered: set[str] = set()
+    for item in result.explanations:
+        fact = item.fact
+        if fact is None:
+            errors.append(f"{item.task_id}: у причины нет факта")
+            continue
+        covered.add(item.task_id)
+        if fact.kind in _RESERVED:
+            errors.append(
+                f"{item.task_id}: тип {fact.kind.value} зарезервирован и в этом плане не проверяется"
+            )
+        if fact.input_hash != live_input:
+            errors.append(f"{item.task_id}: хеш входа в факте не совпадает с программой")
+        if fact.plan_hash != live_plan and fact.plan_hash != str(result.evidence.get("plan_hash") or ""):
+            errors.append(f"{item.task_id}: хеш плана в факте не совпадает с планом")
+        row = rows.get(item.task_id)
+        if row is None:
+            errors.append(f"{item.task_id}: работы нет в плане")
+            continue
+        allowed = {row.start.isoformat(), row.finish.isoformat()}
+        if fact.blocker_task_id:
+            blocker = rows.get(fact.blocker_task_id)
+            if blocker is None:
+                errors.append(f"{item.task_id}: блокер {fact.blocker_task_id} отсутствует в плане")
+            else:
+                allowed.add(blocker.start.isoformat())
+                allowed.add(blocker.finish.isoformat())
+        if row.start.isoformat() not in fact.dates:
+            errors.append(f"{item.task_id}: в факте нет даты начала {row.start.isoformat()}")
+        for value in fact.dates:
+            if value not in allowed:
+                errors.append(f"{item.task_id}: дата {value} не относится к работе или блокеру")
+        if fact.project_id is not None and fact.project_id not in projects:
+            errors.append(f"{item.task_id}: ОКР {fact.project_id} нет в программе")
+        if fact.resource_id is not None and fact.resource_id not in resources:
+            errors.append(f"{item.task_id}: ресурса {fact.resource_id} нет в программе")
+        if fact.kind in (
+            CauseKind.PRECEDENCE,
+            CauseKind.MAX_LAG,
+        ) and fact.blocker_task_id not in incoming.get(item.task_id, set()):
+            errors.append(f"{item.task_id}: блокер не является предшественником")
+        if (
+            fact.kind
+            in (
+                CauseKind.RESOURCE_CAPACITY,
+                CauseKind.SKILL_CAPACITY,
+                CauseKind.CALENDAR,
+                CauseKind.MAINTENANCE,
+                CauseKind.TEST_ARTICLE,
+            )
+            and not fact.resource_id
+        ):
+            errors.append(f"{item.task_id}: у факта о ресурсе нет ресурса")
+    fresh = {item.task_id for item in explain(program, result)}
+    for task_id in fresh:
+        if task_id not in covered and task_id in rows and rows[task_id].shift_wd:
+            errors.append(f"{task_id}: сдвиг без факта")
+    return errors
 
 
 def _context(program: OKRProgram, result: PlanResult, adjustments: Adjustments) -> _Ctx:
@@ -163,6 +286,7 @@ def _context(program: OKRProgram, result: PlanResult, adjustments: Adjustments) 
         users=users,
         names={task.id: task.name for task in program.tasks},
         projects={task.id: task.project_id for task in program.tasks},
+        articles={article.resource_id for article in program.articles},
     )
 
 
@@ -185,39 +309,70 @@ def _edge_bounds(ctx: _Ctx, task_id: str) -> list[tuple[int, str, str]]:
     return out
 
 
-def _cause(ctx: _Ctx, task_id: str) -> tuple[str, list[str], str]:
+def _window_cause(reason: str) -> _Cause:
+    return _Cause(
+        code=f"WINDOW_{reason.upper()}",
+        refs=[],
+        text=_WINDOW_TEXT.get(reason, reason),
+        kind=_WINDOW_KIND.get(reason, CauseKind.OPTIMIZER_CHOICE),
+    )
+
+
+def _max_lag_holds(ctx: _Ctx, task_id: str, src: str, start: int) -> bool:
+    duration = ctx.compiled.windows[task_id].duration
+    src_row = ctx.rows[src]
+    for edge in ctx.program.dependencies:
+        if edge.dst_task_id != task_id or edge.src_task_id != src or not edge.hard or edge.max_lag_wd is None:
+            continue
+        if src_row.status is TaskStatus.DONE:
+            anchor = ctx.compiled.fixed_anchor[src]
+            value = (anchor[1] if anchor_is_end_src(edge.type) else anchor[0]) or 0
+        else:
+            value = src_row.end_index if anchor_is_end_src(edge.type) else src_row.start_index
+        bound = value + edge.max_lag_wd - (duration if anchor_is_end_dst(edge.type) else 0)
+        if bound == start:
+            return True
+    return False
+
+
+def _cause(ctx: _Ctx, task_id: str) -> _Cause:
     if task_id in ctx.cache:
         return ctx.cache[task_id]
-    ctx.cache[task_id] = ("CYCLE_GUARD", [], "")
+    ctx.cache[task_id] = _Cause("CYCLE_GUARD", [], "", CauseKind.PRECEDENCE)
     row = ctx.rows[task_id]
     window = ctx.compiled.windows[task_id]
     start = row.start_index
-    answer: tuple[str, list[str], str]
     tight = [(src, rel) for bound, src, rel in _edge_bounds(ctx, task_id) if bound == start]
     if window.fixed:
-        reason = window.reasons_lo[-1]
-        answer = (f"WINDOW_{reason.upper()}", [], _WINDOW_TEXT.get(reason, reason))
+        answer = _window_cause(window.reasons_lo[-1])
     elif tight:
         src, rel = sorted(tight)[0]
         cross = ctx.projects[src] != ctx.projects[task_id]
-        answer = (
-            "CROSS_PROJECT_DEPENDENCY" if cross else "DEPENDENCY",
-            [src],
-            f"ждёт «{ctx.names[src]}» (связь {rel}"
-            + (f", {_project_code(ctx, ctx.projects[src])}" if cross else "")
-            + ")",
+        answer = _Cause(
+            code="CROSS_PROJECT_DEPENDENCY" if cross else "DEPENDENCY",
+            refs=[src],
+            text=(
+                f"ждёт «{ctx.names[src]}» (связь {rel}"
+                + (f", {_project_code(ctx, ctx.projects[src])}" if cross else "")
+                + ")"
+            ),
+            kind=CauseKind.MAX_LAG if _max_lag_holds(ctx, task_id, src, start) else CauseKind.PRECEDENCE,
+            blocker_task_id=src,
+            dates=(ctx.rows[src].start.isoformat(),),
         )
     elif start == window.lo:
         reason = window.reasons_lo[-1]
         if reason.startswith("dep:"):
             src = reason[4:]
-            answer = (
-                "DEPENDENCY_DONE",
-                [src],
-                f"ждёт выполненную/начатую работу «{ctx.names.get(src, src)}»",
+            answer = _Cause(
+                code="DEPENDENCY_DONE",
+                refs=[src],
+                text=f"ждёт выполненную/начатую работу «{ctx.names.get(src, src)}»",
+                kind=CauseKind.PRECEDENCE,
+                blocker_task_id=src,
             )
         else:
-            answer = (f"WINDOW_{reason.upper()}", [], _WINDOW_TEXT.get(reason, reason))
+            answer = _window_cause(reason)
     else:
         answer = _resource_cause(ctx, row)
     ctx.cache[task_id] = answer
@@ -231,15 +386,38 @@ def _project_code(ctx: _Ctx, project_id: str) -> str:
     return project_id
 
 
-def _resource_cause(ctx: _Ctx, row: TaskPlan) -> tuple[str, list[str], str]:
+def _closure_kind(ctx: _Ctx, resource_id: str, day: int, skill: bool) -> CauseKind:
+    if resource_id in ctx.articles:
+        return CauseKind.TEST_ARTICLE
+    if skill:
+        return CauseKind.SKILL_CAPACITY
+    day_date = ctx.compiled.axis.days[day]
+    for item in ctx.program.capacity_exceptions:
+        if (
+            item.resource_id == resource_id
+            and item.start <= day_date <= item.end
+            and item.reason.value == "MAINTENANCE"
+        ):
+            return CauseKind.MAINTENANCE
+    return CauseKind.CALENDAR
+
+
+def _load_kind(ctx: _Ctx, resource_id: str, skill: bool) -> CauseKind:
+    if resource_id in ctx.articles:
+        return CauseKind.TEST_ARTICLE
+    return CauseKind.SKILL_CAPACITY if skill else CauseKind.RESOURCE_CAPACITY
+
+
+def _resource_cause(ctx: _Ctx, row: TaskPlan) -> _Cause:
     task = ctx.program.task(row.task_id)
     probe = row.start_index - 1
     last = min(probe + row.duration_wd, len(ctx.compiled.axis))
-    reserve: tuple[str, list[str], str] | None = None
+    reserve: _Cause | None = None
     for demand in task.demands:
         rid = demand.resource_id or row.bound.get(demand.skill_id or "")
         if rid is None or rid not in ctx.avail:
             continue
+        skill = demand.skill_id is not None
         for day in range(max(probe, 0), last):
             own = demand.units if row.start_index <= day < row.end_index else 0
             if ctx.load[rid][day] - own + demand.units <= ctx.avail[rid][day]:
@@ -254,38 +432,58 @@ def _resource_cause(ctx: _Ctx, row: TaskPlan) -> tuple[str, list[str], str]:
             raw = ctx.compiled.availability[rid][day]
             if not occupants and raw > 0:
                 if reserve is None:
-                    reserve = (
-                        "CAPACITY_RESERVE",
-                        [rid],
-                        f"{resource.code}: резерв варианта оставил {ctx.avail[rid][day]} из {raw} ед., "
-                        f"задаче нужно {demand.units} ({when})",
+                    reserve = _Cause(
+                        code="CAPACITY_RESERVE",
+                        refs=[rid],
+                        text=(
+                            f"{resource.code}: резерв варианта оставил {ctx.avail[rid][day]} из {raw} ед., "
+                            f"задаче нужно {demand.units} ({when})"
+                        ),
+                        kind=_load_kind(ctx, rid, skill),
+                        resource_id=rid,
                     )
                 continue
             if not occupants:
-                return (
-                    "CALENDAR_CLOSURE",
-                    [rid],
-                    f"{resource.code} недоступен {when} (отпуск/ТО/календарь ресурса)",
+                return _Cause(
+                    code="CALENDAR_CLOSURE",
+                    refs=[rid],
+                    text=f"{resource.code} недоступен {when} (отпуск/ТО/календарь ресурса)",
+                    kind=_closure_kind(ctx, rid, day, skill),
+                    resource_id=rid,
                 )
             others = sorted({ctx.projects[item] for item in occupants} - {row.project_id})
             names = ", ".join(f"«{ctx.names[item]}»" for item in occupants[:3])
             foreign = ", ".join(_project_code(ctx, item) for item in others)
-            return (
-                "RESOURCE_CONTENTION" if others else "RESOURCE_BUSY",
-                [rid, *occupants],
-                f"{resource.code} занят {when}: {names}" + (f" ({foreign})" if foreign else ""),
+            blocker = occupants[0]
+            return _Cause(
+                code="RESOURCE_CONTENTION" if others else "RESOURCE_BUSY",
+                refs=[rid, *occupants],
+                text=f"{resource.code} занят {when}: {names}" + (f" ({foreign})" if foreign else ""),
+                kind=_load_kind(ctx, rid, skill),
+                resource_id=rid,
+                blocker_task_id=blocker,
+                dates=(ctx.rows[blocker].start.isoformat(),),
             )
-    return reserve or ("OPTIMIZER_CHOICE", [], "положение выбрано оптимизатором (ограничение не активно)")
+    return reserve or _Cause(
+        code="OPTIMIZER_CHOICE",
+        refs=[],
+        text="положение выбрано оптимизатором (ограничение не активно)",
+        kind=CauseKind.OPTIMIZER_CHOICE,
+    )
 
 
 def _chain(ctx: _Ctx, task_id: str, depth: int = 40) -> list[str]:
     chain = [task_id]
     current = task_id
     for _ in range(depth):
-        code, refs, _ = _cause(ctx, current)
-        if code not in ("DEPENDENCY", "CROSS_PROJECT_DEPENDENCY") or not refs or refs[0] in chain:
+        cause = _cause(ctx, current)
+        if (
+            cause.code not in ("DEPENDENCY", "CROSS_PROJECT_DEPENDENCY")
+            or not cause.refs
+            or cause.refs[0] in chain
+        ):
             break
-        current = refs[0]
+        current = cause.refs[0]
         chain.append(current)
     return chain
 
@@ -310,6 +508,7 @@ def counterfactual(
         "applicable": True,
         "feasible": alt.outcome.ok,
         "claim": alt.outcome.claim.value,
+        "fact_kind": CauseKind.COUNTERFACTUAL.value,
     }
     if alt.outcome.ok and alt.kpi and result.kpi and alt.kpi.program_finish and result.kpi.program_finish:
         axis = compiled.axis
@@ -466,6 +665,7 @@ def infeasibility_witness(
     if _status(relax(program, requirements), config) == "infeasible":
         return {
             "infeasible": True,
+            "fact_kind": CauseKind.INFEASIBILITY_CONFLICT.value,
             "witness": [],
             "minimal": True,
             "text": "программа невыполнима даже без директивных сроков и закреплений: "
@@ -493,6 +693,7 @@ def infeasibility_witness(
     ]
     return {
         "infeasible": True,
+        "fact_kind": CauseKind.INFEASIBILITY_CONFLICT.value,
         "witness": witness,
         "minimal": minimal,
         "probes": probes,

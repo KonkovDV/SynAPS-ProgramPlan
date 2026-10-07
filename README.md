@@ -39,7 +39,7 @@ SynAPS-ProgramPlan закрывает эти места:
 | RCPSP/max j10, j20, j30 | 810 | Связи «начало — начало», минимальные и максимальные задержки. Все заведомо невыполнимые задачи распознаны с доказательством, известные оптимумы совпали на всех задачах, кроме одной |
 | Учебные программы | 3 размера | До 64 ОКР и 2 688 работ. План принят на каждом размере. Суммарная просрочка CP-SAT меньше, чем у жадного плана: на 54 %, 45 % и 28 % |
 
-Условия прогонов: лимит решателя 10 с на задачу (60 с для учебных программ), один поток, фиксированное начальное число генератора. Команды для повторения и полные таблицы — в [`docs/quality-assurance.md`](docs/quality-assurance.md). Автоматических тестов — 166.
+Условия прогонов: лимит решателя 10 с на задачу (60 с для учебных программ), один поток, фиксированное начальное число генератора. Команды для повторения и полные таблицы — в [`docs/quality-assurance.md`](docs/quality-assurance.md). Автоматических тестов — 184.
 
 ## Что получает руководитель программы
 
@@ -124,6 +124,8 @@ P80 окончания программы по принятому плану —
 | 11. Новая дата статуса | `SynAPS-ProgramPlan repair program.json out/plan_A.json --status-date 2027-03-01 --freeze-wd 10 --out plan2.json --out-program program2.json` | План от новой даты, ближайшие 10 рабочих дней не трогаются |
 | 12. Журнал | `SynAPS-ProgramPlan journal decisions.jsonl --tail 5` | Последние решения и проверка, что журнал не изменён |
 
+Две версии файла сравнивает `SynAPS-ProgramPlan diff before.json after.json`: работы, связи, ресурсы и даты. Файл без `schema_version` читается как текущая схема. Неизвестная версия — код 2.
+
 Каждый шаг с примерами разобран в [`docs/user-guide.md`](docs/user-guide.md).
 
 ![Риск срыва принятого плана: P80, драйверы и вехи](docs/img/workbench-risk-journal.png)
@@ -173,6 +175,7 @@ git clone https://github.com/KonkovDV/SynAPS-ProgramPlan.git
 cd SynAPS-ProgramPlan
 pip install -e ".[dev,api]"
 python -m pytest tests -q
+python scripts/build_evidence.py --check
 python scripts/lint_claims.py
 ruff check src tests scripts
 ruff format --check src tests scripts

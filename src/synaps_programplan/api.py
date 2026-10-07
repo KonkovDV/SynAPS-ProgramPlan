@@ -1,7 +1,7 @@
 """Stateless HTTP surface over the same functions as the command line.
 
-A solve response is HTTP 200 only when ``outcome.ok`` is true. Anything else
-is 409 with the verdict and no instruction to publish the dates. Storage,
+A solve response is HTTP 200 only when the plan passes ``attestation_error``:
+accepted by the solver, and both hashes match. Anything else is 409. Storage,
 roles and the operator journal live in the workbench (``workbench.py``,
 ``SynAPS-ProgramPlan serve``), not in this process.
 """
@@ -193,6 +193,9 @@ def solve_program(body: SolveRequest) -> dict[str, Any]:
     payload = result.model_dump(mode="json")
     if not result.outcome.ok:
         raise HTTPException(status_code=409, detail={"accepted": False, "result": payload})
+    rejected = attestation_error(program, result)
+    if rejected:
+        raise HTTPException(status_code=409, detail={"accepted": False, "detail": rejected})
     return {"accepted": True, "result": payload}
 
 

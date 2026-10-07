@@ -110,9 +110,18 @@ def _check_task(ctx: _Ctx, task: Task, row: TaskPlan, out: list[Violation]) -> N
     if task.status is TaskStatus.IN_PROGRESS and row.start != task.actual_start:
         out.append(
             Violation(
-                code="FROZEN_MOVED",
+                code="STARTED_MOVED",
                 severity=HARD,
                 message=f"started task {task.id} must keep actual_start",
+                task_ids=ids,
+            )
+        )
+    if task.status is TaskStatus.IN_PROGRESS and row.finish < ctx.planning_start:
+        out.append(
+            Violation(
+                code="FORECAST_BEFORE_STATUS",
+                severity=HARD,
+                message=f"task {task.id} forecast finish {row.finish} is before the status date",
                 task_ids=ids,
             )
         )

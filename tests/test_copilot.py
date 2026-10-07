@@ -29,6 +29,11 @@ def test_an_unaccepted_plan_is_not_read() -> None:
         facts_of(program([task("a", 1)]), _rejected())
 
 
+def test_ask_without_facts_is_refused() -> None:
+    with pytest.raises(ValueError, match="without plan facts"):
+        ask("почему", [], lambda _messages: '{"statements":[]}')
+
+
 def test_a_statement_without_a_known_fact_is_dropped() -> None:
     facts = [Fact("task:a", "работа a с 2026-10-05 по 2026-10-07")]
 

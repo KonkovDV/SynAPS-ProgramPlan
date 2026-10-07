@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from synaps_programplan.explanations import explain, explanation_gaps
+from synaps_programplan.explanations import explain, explanation_gaps, fact_errors
 from synaps_programplan.planner import Adjustments, SolveConfig, plan
+from synaps_programplan.result import CauseKind
 from synaps_programplan.scenarios import WhatIf, program_for_plan, run_scenarios
-from tests.conftest import person, program, stand, task, uses
+from tests.conftest import dep, person, program, stand, task, uses
 
 
 def test_stored_explanation_matches_a_fresh_reading_of_the_plan() -> None:
@@ -94,4 +95,32 @@ def test_a_capacity_reserve_is_not_called_a_vacation() -> None:
     named = explain(queued, both, adjustments=Adjustments(capacity_scale={"eng": 0.8}))
     delayed = next(item for item in named if item.shift_wd > 0)
     assert delayed.cause_code == "RESOURCE_CONTENTION"
+    assert delayed.fact is not None
+    assert delayed.fact.kind is CauseKind.RESOURCE_CAPACITY
     assert "отпуск" not in delayed.text
+
+
+def test_every_moved_task_has_a_fact_that_matches_the_plan() -> None:
+    monday = date(2026, 10, 5)
+    prog = program(
+        [
+            task("a", 3, planned_start=monday, planned_finish=date(2026, 10, 7)),
+            task("b", 1, planned_start=monday, planned_finish=monday),
+        ],
+        [dep("a", "b")],
+    )
+    result = plan(prog, SolveConfig(solver="greedy"))
+    assert result.outcome.ok
+    result.explanations = explain(prog, result)
+    moved = {row.task_id for row in result.tasks if row.shift_wd}
+    assert moved
+    assert moved <= {item.task_id for item in result.explanations if item.fact is not None}
+    assert fact_errors(prog, result) == []
+    held = next(item for item in result.explanations if item.task_id == "b")
+    assert held.fact is not None
+    assert held.fact.kind in (CauseKind.PRECEDENCE, CauseKind.MAX_LAG)
+    assert held.fact.blocker_task_id == "a"
+    assert CauseKind.SETUP_TRANSITION.value == "SETUP_TRANSITION"
+    assert CauseKind.MODE_SELECTION.value == "MODE_SELECTION"
+    held.fact.dates = ["1999-01-01"]
+    assert any("1999-01-01" in item or "даты начала" in item for item in fact_errors(prog, result))

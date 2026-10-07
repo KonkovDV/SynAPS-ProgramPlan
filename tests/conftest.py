@@ -30,6 +30,20 @@ def _quiet_kernel_logs() -> None:
     logging.getLogger("synaps").setLevel(logging.WARNING)
 
 
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """A skip is a failed run: a silent skip would hide an untested promise."""
+    if exitstatus != 0:
+        return
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is None:
+        return
+    skipped = reporter.stats.get("skipped", [])
+    if not skipped:
+        return
+    session.exitstatus = pytest.ExitCode.TESTS_FAILED
+    reporter.write_sep("!", f"{len(skipped)} unexpected skip(s); a skip is a failed run")
+
+
 def task(task_id: str, duration: int, project: str = "p1", **extra: Any) -> Task:
     kind = TaskKind.MILESTONE if duration == 0 else TaskKind.WORK
     return Task(id=task_id, project_id=project, name=task_id, duration_wd=duration, kind=kind, **extra)

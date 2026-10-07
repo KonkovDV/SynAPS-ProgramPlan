@@ -352,12 +352,26 @@ def _task(
         pinned=pinned,
         status=status,
         remaining_wd=remaining,
+        percent_complete=_xer_percent(status, row.get("phys_complete_pct")),
         actual_start=act_start if status is not TaskStatus.PLANNED else None,
         actual_finish=act_end if status is TaskStatus.DONE else None,
         planned_start=act_start if status is not TaskStatus.PLANNED and act_start else start,
         planned_finish=act_end if status is TaskStatus.DONE and act_end else finish,
         domain_attributes={"xer_task_id": row["task_id"], "xer_task_code": row.get("task_code", "")},
     )
+
+
+def _xer_percent(status: TaskStatus, raw: str | None) -> int | None:
+    if raw in (None, ""):
+        return 100 if status is TaskStatus.DONE else None
+    percent = int(float(raw))
+    if status is TaskStatus.DONE:
+        return 100
+    if status is TaskStatus.IN_PROGRESS and percent < 100:
+        return percent
+    if status is TaskStatus.PLANNED and percent == 0:
+        return 0
+    return None
 
 
 def _resources(

@@ -39,7 +39,7 @@ The scheduler has been measured on the public sets used by research groups and s
 | RCPSP/max j10, j20, j30 | 810 | Start-to-start links, minimum and maximum lags. Every instance known to be infeasible is proved infeasible. Known optima match on every instance except one |
 | Study programmes | 3 sizes | Up to 64 projects and 2,688 activities. A plan is accepted at every size. CP-SAT cuts the greedy plan's total tardiness by 54%, 45% and 28% |
 
-Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 166.
+Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 184.
 
 ## What the programme manager gets
 
@@ -124,6 +124,8 @@ The P80 of the programme finish under the accepted plan is 9 March 2029. Every r
 | 11. A new status date | `SynAPS-ProgramPlan repair program.json out/plan_A.json --status-date 2027-03-01 --freeze-wd 10 --out plan2.json --out-program program2.json` | A plan from the new date. The next 10 working days stay put |
 | 12. Journal | `SynAPS-ProgramPlan journal decisions.jsonl --tail 5` | The latest decisions, and a check that the journal has not been altered |
 
+`SynAPS-ProgramPlan diff before.json after.json` lists the tasks, links, resources and dates that differ. A file with no `schema_version` is read as the current schema. An unknown version exits with code 2.
+
 Each step is worked through with examples in [`docs/user-guide.md`](docs/user-guide.md).
 
 ![Schedule risk of the accepted plan: P80, risk drivers and milestones](docs/img/workbench-risk-journal.png)
@@ -175,6 +177,7 @@ git clone https://github.com/KonkovDV/SynAPS-ProgramPlan.git
 cd SynAPS-ProgramPlan
 pip install -e ".[dev,api]"
 python -m pytest tests -q
+python scripts/build_evidence.py --check
 python scripts/lint_claims.py
 ruff check src tests scripts
 ruff format --check src tests scripts

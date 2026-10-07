@@ -132,7 +132,9 @@ def yandex_complete(key: str, folder: str, model: str, messages: list[dict[str, 
 
 
 def ask(question: str, facts: list[Fact], complete: Callable[[list[dict[str, str]]], str]) -> Answer:
-    """Keep only sentences whose fact ids are in ``facts``."""
+    """Keep only sentences whose fact ids are in ``facts``. No facts, no request."""
+    if not facts:
+        raise ValueError("the language model is refused without plan facts")
     known = {fact.id: fact.text for fact in facts}
     listing = "\n".join(f"{fact.id}: {fact.text}" for fact in facts)
     messages = [

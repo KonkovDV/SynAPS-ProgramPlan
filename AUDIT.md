@@ -1,3 +1,11 @@
+# AUDIT SynAPS-ProgramPlan — 2026-10-07, журнал доказательств
+
+Проверено на этой машине (Windows, Python 3.12.10, SynAPS `786cf1b3bc915941558e7e50b2935de684a32643`).
+
+- `python -m pytest tests -q`: 184 passed, 17 с, пропусков нет. `ruff check src tests scripts`, `ruff format --check src tests scripts`, `mypy src`, `python scripts/lint_claims.py`, `python scripts/build_evidence.py --check --demo-dir out/demo` — код 0.
+- Свежая сборка `demo --projects 4 --time-limit 8 --risk-runs 40 --out-dir out/demo-check` — код 0, около 58 с вместе с двумя `doctor`. Хеш плана A совпал с каталогом показа: `b186cfe85cb25432e885c146a6551cbaae8d01c152ed565d87bb1ea32641c193`. Окончание 23.08.2028, просрочка 139, сдвинута 71 работа, P80 09.03.2029. `doctor --demo out/demo` и `doctor --demo out/demo-check` — код 0.
+- GitHub Actions закреплены по SHA коммита: `actions/checkout` v5.1.0, `actions/setup-python` v6.3.0. `/solve` и скачивание варианта из рабочего места не отдают даты, если хеш плана не совпал.
+
 # AUDIT SynAPS-ProgramPlan — 2026-10-06, перед показом заказчику
 
 Это журнал раундов: сверху последний, ниже — ранние, их цифры относятся к своему времени. Текущее число тестов и прогоны — в [`docs/quality-assurance.md`](docs/quality-assurance.md).

@@ -7,10 +7,50 @@ a dangling task can still be placed. Conflict detection lives in
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 from synaps_programplan.calendar import WorkCalendar, WorkdayAxis
 from synaps_programplan.model import OKRProgram, TaskStatus
+
+
+@dataclass(frozen=True)
+class QualityLimits:
+    """Pilot starting points, not a standard. Override them with the environment."""
+
+    long_task_wd: int = 66
+    hard_share: float = 0.05
+    hard_min_count: int = 5
+    high_lag_wd: int = 20
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def quality_limits() -> QualityLimits:
+    return QualityLimits(
+        long_task_wd=_env_int("SYNAPS_PROGRAMPLAN_LONG_TASK_WD", 66),
+        hard_share=_env_float("SYNAPS_PROGRAMPLAN_HARD_SHARE", 0.05),
+        hard_min_count=_env_int("SYNAPS_PROGRAMPLAN_HARD_MIN_COUNT", 5),
+        high_lag_wd=_env_int("SYNAPS_PROGRAMPLAN_HIGH_LAG_WD", 20),
+    )
 
 
 @dataclass
@@ -24,9 +64,19 @@ class QualityIssue:
         return {"code": self.code, "message": self.message, "tasks": self.tasks, "severity": self.severity}
 
 
-def quality_issues(program: OKRProgram, calendar: WorkCalendar, axis: WorkdayAxis) -> list[QualityIssue]:
-    """DCMA-14-style hygiene checks that make a consolidated plan untrustworthy."""
+def quality_issues(
+    program: OKRProgram,
+    calendar: WorkCalendar,
+    axis: WorkdayAxis,
+    limits: QualityLimits | None = None,
+) -> list[QualityIssue]:
+    """Schedule-quality checks in the spirit of DCMA 14-Point and GAO-16-89G.
+
+    Thresholds are the pilot starting points from ``QualityLimits``. They are
+    not a claim that a schedule above them is wrong.
+    """
     del axis  # the axis is part of the call from conflict analysis; dates use the calendar
+    limits = limits or quality_limits()
     out: list[QualityIssue] = []
     has_pred = {edge.dst_task_id for edge in program.dependencies}
     has_succ = {edge.src_task_id for edge in program.dependencies}
@@ -45,19 +95,39 @@ def quality_issues(program: OKRProgram, calendar: WorkCalendar, axis: WorkdayAxi
     no_res = [t.id for t in program.tasks if t.duration_wd > 0 and not t.demands]
     if no_res:
         out.append(QualityIssue("NO_RESOURCES", f"{len(no_res)} работ без назначенных ресурсов", no_res[:50]))
-    long_tasks = [t.id for t in program.tasks if t.duration_wd > 66]
+    long_tasks = [t.id for t in program.tasks if t.duration_wd > limits.long_task_wd]
     if long_tasks:
         out.append(
             QualityIssue(
-                "LONG_TASK", f"{len(long_tasks)} работ длиннее 66 раб. дн. (~3 мес.)", long_tasks[:50]
+                "LONG_TASK",
+                f"{len(long_tasks)} работ длиннее {limits.long_task_wd} раб. дн.",
+                long_tasks[:50],
             )
         )
     leads = [f"{e.src_task_id}->{e.dst_task_id}" for e in program.dependencies if e.lag_wd < 0]
     if leads:
         out.append(QualityIssue("NEGATIVE_LAG", f"{len(leads)} связей с отрицательным лагом", leads[:50]))
+    long_lags = [
+        f"{e.src_task_id}->{e.dst_task_id}" for e in program.dependencies if e.lag_wd > limits.high_lag_wd
+    ]
+    if long_lags:
+        out.append(
+            QualityIssue(
+                "HIGH_LAG",
+                f"{len(long_lags)} связей с задержкой больше {limits.high_lag_wd} раб. дн.",
+                long_lags[:50],
+            )
+        )
     hard = [t.id for t in program.tasks if t.hard_finish is not None or t.earliest_start is not None]
-    if len(hard) > max(5, len(program.tasks) // 20):
-        out.append(QualityIssue("HARD_CONSTRAINTS", f"{len(hard)} работ с жёсткими датами (>5%)", hard[:50]))
+    hard_limit = max(limits.hard_min_count, int(len(program.tasks) * limits.hard_share))
+    if len(hard) > hard_limit:
+        out.append(
+            QualityIssue(
+                "HARD_CONSTRAINTS",
+                f"{len(hard)} работ с жёсткими датами (порог {hard_limit})",
+                hard[:50],
+            )
+        )
     start = program.program.planning_start
     stale = [
         t.id

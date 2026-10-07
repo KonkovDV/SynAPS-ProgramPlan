@@ -25,6 +25,20 @@ def _solved() -> tuple[dict, dict]:
     return prog.model_dump(mode="json"), response.json()["result"]
 
 
+def test_solve_withholds_dates_when_attestation_fails(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "synaps_programplan.api.attestation_error",
+        lambda _program, _plan: "plan evidence.plan_hash does not match the plan",
+    )
+    prog = program([task("a", 2)])
+    response = client.post("/solve", json={"program": prog.model_dump(mode="json"), "solver": "greedy"})
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["accepted"] is False
+    assert "plan_hash" in detail["detail"]
+    assert "result" not in detail
+
+
 def test_check_rejects_an_unaccepted_plan_even_when_the_dates_are_clean() -> None:
     body, plan = _solved()
     plan["outcome"]["ok"] = False

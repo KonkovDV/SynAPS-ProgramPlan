@@ -7,8 +7,11 @@ the comparison table with their verdict and no dates.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import html
 import json
+import re
 from datetime import date
 from importlib import resources
 from typing import Any
@@ -80,6 +83,7 @@ def report_data(
                     "shift": row.shift_wd,
                     "ref_start": row.reference_start.isoformat() if row.reference_start else None,
                     "ref_finish": row.reference_finish.isoformat() if row.reference_finish else None,
+                    **_progress(program, compiled.axis, tasks[row.task_id], row),
                     "deadline": _iso(tasks[row.task_id].hard_finish),
                     "due": _iso(tasks[row.task_id].due_date),
                     "bound": row.bound,
@@ -177,6 +181,42 @@ def _article_code(program: OKRProgram, article_id: str | None) -> str | None:
     return article_id
 
 
+def _slip(axis: Any, left: date | None, right: date | None) -> int | None:
+    if left is None or right is None:
+        return None
+    return int(axis.boundary_after(right) - axis.boundary_after(left))
+
+
+def _progress(program: OKRProgram, axis: Any, source: Any, row: Any) -> dict[str, Any]:
+    """Baseline, actual and forecast dates, plus the slip of the finish against each."""
+    status_date = program.program.planning_start
+    baseline_start = source.baseline_start or row.reference_start
+    baseline_finish = source.baseline_finish or row.reference_finish
+    if source.status is TaskStatus.DONE:
+        forecast_start = forecast_finish = None
+    elif source.status is TaskStatus.IN_PROGRESS:
+        forecast_start, forecast_finish = status_date, row.finish
+    else:
+        forecast_start, forecast_finish = row.start, row.finish
+    anchor = source.planned_finish or baseline_finish
+    fact_slip = None
+    if source.status is TaskStatus.DONE and source.actual_finish is not None:
+        fact_slip = _slip(axis, anchor, source.actual_finish)
+    elif source.status is TaskStatus.IN_PROGRESS:
+        fact_slip = _slip(axis, anchor, row.finish)
+    return {
+        "percent": source.progress_percent(),
+        "baseline_start": _iso(baseline_start),
+        "baseline_finish": _iso(baseline_finish),
+        "actual_start": _iso(source.actual_start),
+        "actual_finish": _iso(source.actual_finish),
+        "forecast_start": _iso(forecast_start),
+        "forecast_finish": _iso(forecast_finish),
+        "baseline_slip_wd": _slip(axis, baseline_finish, row.finish),
+        "fact_slip_wd": fact_slip,
+    }
+
+
 def _iso(value: date | None) -> str | None:
     return value.isoformat() if value else None
 
@@ -197,11 +237,45 @@ def _json_for_script(data: dict[str, Any]) -> str:
     )
 
 
-def render_html(data: dict[str, Any], title: str | None = None) -> str:
+_SCRIPT_BLOCK = re.compile(r"<script\b([^>]*)>(.*?)</script>", re.DOTALL | re.IGNORECASE)
+
+
+def _script_hash(body: str) -> str:
+    digest = hashlib.sha256(body.encode("utf-8")).digest()
+    return "sha256-" + base64.b64encode(digest).decode("ascii")
+
+
+def _script_src(page: str, nonce: str | None) -> tuple[str, str]:
+    """CSP source for the inline scripts, and the page with those scripts marked.
+
+    A hash is of the exact script text. A hash and ``'unsafe-inline'`` together
+    make the browser ignore ``'unsafe-inline'``, so styles stay on
+    ``'unsafe-inline'`` alone: the page sets colours from script.
+    """
+    if nonce is not None:
+        if re.fullmatch(r"[0-9a-f]+", nonce) is None:
+            raise ValueError("CSP nonce must be hexadecimal")
+        stamped = _SCRIPT_BLOCK.sub(
+            lambda match: f'<script nonce="{nonce}"{match.group(1)}>{match.group(2)}</script>',
+            page,
+        )
+        return f"'nonce-{nonce}'", stamped
+    bodies = _SCRIPT_BLOCK.findall(page)
+    if not bodies:
+        raise RuntimeError("report has no script to pin")
+    sources = " ".join(f"'{_script_hash(body)}'" for _attrs, body in bodies)
+    return sources, page
+
+
+def render_html(data: dict[str, Any], title: str | None = None, *, nonce: str | None = None) -> str:
     payload = _json_for_script(data)
     heading = html.escape(title or f"Сводный план программы ОКР — {data['program']['name']}")
     template = resources.files("synaps_programplan").joinpath("report_template.html").read_text("utf-8")
-    return template.replace("__TITLE__", heading).replace("__DATA__", payload)
+    page = template.replace("__TITLE__", heading).replace("__DATA__", payload)
+    script_src, page = _script_src(page, nonce)
+    if "__SCRIPT_SRC__" not in page:
+        raise RuntimeError("report template has no script policy placeholder")
+    return page.replace("__SCRIPT_SRC__", script_src)
 
 
 def build_report(

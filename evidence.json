@@ -1,0 +1,84 @@
+{
+  "tests": {
+    "passed": 184,
+    "skipped": 0,
+    "failed": 0
+  },
+  "demo": {
+    "command": "SynAPS-ProgramPlan demo --projects 4 --time-limit 8 --risk-runs 40 --out-dir out/demo",
+    "plans": {
+      "A": {
+        "claim": "FEASIBLE",
+        "finish": "2028-08-23",
+        "tardiness_wd": 139,
+        "moved_tasks": 71,
+        "plan_hash": "b186cfe85cb25432e885c146a6551cbaae8d01c152ed565d87bb1ea32641c193"
+      },
+      "B": {
+        "claim": "FEASIBLE",
+        "finish": "2029-01-25",
+        "tardiness_wd": 295,
+        "moved_tasks": 77,
+        "plan_hash": "ff83d0ff639710e9bc8f3ea9d55462157292f226b40c7a93bf6abbf84d76184e"
+      },
+      "C": {
+        "claim": "FEASIBLE",
+        "finish": "2028-08-31",
+        "tardiness_wd": 312,
+        "moved_tasks": 78,
+        "plan_hash": "b55b86828514a7b705f2ed19faa220aa975cc7f0d7554cb6f16f764bd8b9116d"
+      },
+      "D": {
+        "claim": "FEASIBLE",
+        "finish": "2028-08-23",
+        "tardiness_wd": 151,
+        "moved_tasks": 72,
+        "plan_hash": "27946124f6f8da1796b75143cfaf6967ae14e11ce80436b840519bc926f57b32"
+      },
+      "E1": {
+        "claim": "FEASIBLE",
+        "finish": "2028-10-12",
+        "tardiness_wd": 89,
+        "moved_tasks": 80,
+        "plan_hash": "96c99dad1dc0cc7b31c26755a91a3d6f739dddcd1b0f90deaf9681c2dc8b6957"
+      },
+      "E2": {
+        "claim": "OPTIMAL",
+        "finish": "2028-07-05",
+        "tardiness_wd": 0,
+        "moved_tasks": 51,
+        "plan_hash": "4f59daa0510e75d2adc5e9ed712140d349bb49b0a2578c91f417e996ebb8d236"
+      },
+      "P": {
+        "claim": "OPTIMAL",
+        "finish": "2028-10-16",
+        "tardiness_wd": 315,
+        "moved_tasks": 78,
+        "plan_hash": "2c40ac7a797d55a5fec37e9934bbe3a5edb22cd9dd5fa330630c4d8c5d311a86"
+      }
+    },
+    "risk_p80": "2029-03-09",
+    "deadlines_met_share": 1.0,
+    "top_driver_p80_gain_wd": 40,
+    "infeasible_dates": [
+      "2027-12-14"
+    ],
+    "conflicts": {
+      "DEADLINE_AT_RISK": 2,
+      "LINK_BROKEN": 2,
+      "SHARED_CONTENTION": 5,
+      "SKILL_POOL_OVERLOAD": 13
+    }
+  },
+  "host": {
+    "measured_at": "2026-10-07",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10",
+    "product_version": "0.1.0",
+    "synaps_commit": "786cf1b3bc915941558e7e50b2935de684a32643",
+    "ortools": "9.15.6755",
+    "java": "openjdk version \"17.0.20\" 2026-07-21 LTS",
+    "mpxj": "16.10.0"
+  },
+  "note": "CI compares the documents with this file and does not re-solve the demonstration. An 8 second limit can change a FEASIBLE plan on a machine of different speed."
+}

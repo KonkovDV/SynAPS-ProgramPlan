@@ -18,7 +18,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 FTE_UNITS = 10
 
@@ -143,6 +143,7 @@ class Task(_Strict):
     pinned: bool = False
     status: TaskStatus = TaskStatus.PLANNED
     remaining_wd: int | None = Field(default=None, ge=0)
+    percent_complete: int | None = Field(default=None, ge=0, le=100)
     actual_start: date | None = None
     actual_finish: date | None = None
     # Dates as they stand in the source plan (MS Project / Primavera / 1C).
@@ -168,7 +169,33 @@ class Task(_Strict):
             raise ValueError(f"DONE task {self.id} needs actual_start and actual_finish")
         if self.status is TaskStatus.IN_PROGRESS and self.actual_start is None:
             raise ValueError(f"IN_PROGRESS task {self.id} needs actual_start")
+        if self.percent_complete is not None:
+            if self.status is TaskStatus.DONE and self.percent_complete != 100:
+                raise ValueError(f"DONE task {self.id} is 100% complete")
+            if self.status is TaskStatus.PLANNED and self.percent_complete != 0:
+                raise ValueError(f"PLANNED task {self.id} has no progress")
+            if self.status is TaskStatus.IN_PROGRESS and self.percent_complete >= 100:
+                raise ValueError(f"IN_PROGRESS task {self.id} is not finished")
         return self
+
+    def progress_percent(self) -> int:
+        """0 for a task not started, 100 for a finished one, the stored percent in between."""
+        if self.percent_complete is not None:
+            return self.percent_complete
+        if self.status is TaskStatus.DONE:
+            return 100
+        if self.status is TaskStatus.IN_PROGRESS and self.duration_wd > 0 and self.remaining_wd is not None:
+            done = max(0, self.duration_wd - self.remaining_wd)
+            return min(99, round(100 * done / self.duration_wd))
+        return 0
+
+    @model_serializer(mode="wrap")
+    def _omit_empty_percent(self, handler: Any) -> Any:
+        """A missing percent is the old file. Putting null in the dump would change its hash."""
+        data = handler(self)
+        if isinstance(data, dict) and data.get("percent_complete") is None:
+            data.pop("percent_complete", None)
+        return data
 
     @property
     def is_milestone(self) -> bool:
@@ -341,10 +368,15 @@ class Provenance(_Strict):
     imported_at: datetime | None = None
 
 
+# Files saved before this field existed omit it. That is the previous format,
+# and it is read as this version. Any other string is refused.
+PROGRAM_SCHEMA = "SynAPS-ProgramPlan.program.v1"
+
+
 class OKRProgram(_Strict):
     """Complete, self-contained input of one planning run."""
 
-    schema_version: str = "SynAPS-ProgramPlan.program.v1"
+    schema_version: str = PROGRAM_SCHEMA
     program: Program
     calendars: list[Calendar]
     projects: list[Project]
@@ -361,6 +393,14 @@ class OKRProgram(_Strict):
     freeze: FreezePolicy = Field(default_factory=FreezePolicy)
     risk_drivers: list[RiskDriver] = Field(default_factory=list)
     provenance: Provenance = Field(default_factory=Provenance)
+
+    @model_validator(mode="after")
+    def _known_schema(self) -> Self:
+        if self.schema_version != PROGRAM_SCHEMA:
+            raise ValueError(
+                f"unknown program schema_version {self.schema_version!r}; this build reads {PROGRAM_SCHEMA}"
+            )
+        return self
 
     @model_validator(mode="after")
     def _references(self) -> Self:

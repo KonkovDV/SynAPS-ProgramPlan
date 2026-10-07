@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from synaps_programplan.checker import check_plan
 from synaps_programplan.conflicts import analyze
 from synaps_programplan.copilot import ask, facts_of, yandex_complete, yandex_settings
+from synaps_programplan.diffing import diff_programs
 from synaps_programplan.disrupt import Disruption, apply_disruption, roll_forward
 from synaps_programplan.edits import check_moves, repair_with_moves
 from synaps_programplan.evidence import fingerprint
@@ -180,6 +181,11 @@ def cmd_import(args: argparse.Namespace) -> int:
 def cmd_template(args: argparse.Namespace) -> int:
     write_template(args.out)
     _print({"out": str(args.out), "sheets": 10})
+    return 0
+
+
+def cmd_diff(args: argparse.Namespace) -> int:
+    _print(diff_programs(load_program(args.before), load_program(args.after)))
     return 0
 
 
@@ -508,7 +514,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
             result.explanations = explain(program_for_plan(program, result), result)
         save_plan(result, out / f"plan_{result.scenario_id}.json")
     base = scenario_set.plans[0]
-    if base.outcome.ok:
+    if base.outcome.ok and attestation_error(program, base) is None:
         attach_counterfactuals(program, base, top=args.counterfactuals, config=config)
         save_plan(base, out / f"plan_{base.scenario_id}.json")
         write_plan_mspdi(program, base, out / "plan.xml")
@@ -623,6 +629,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("template", help="пустая книга Excel для сводной программы")
     p.add_argument("--out", type=Path, required=True)
     p.set_defaults(func=cmd_template)
+
+    p = sub.add_parser("diff", help="что изменилось между двумя версиями программы")
+    p.add_argument("before", type=Path)
+    p.add_argument("after", type=Path)
+    p.set_defaults(func=cmd_diff)
 
     for name, func, text in (
         ("analyze", cmd_analyze, "конфликты и качество исходных планов"),

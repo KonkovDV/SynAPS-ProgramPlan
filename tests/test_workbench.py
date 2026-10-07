@@ -310,11 +310,29 @@ def _client(tmp_path: Path, spec: str = "") -> tuple[TestClient, Workbench]:
     return TestClient(create_app(bench)), bench
 
 
+def test_download_refuses_a_plan_whose_hash_was_rewritten(tmp_path: Path) -> None:
+    client, bench = _client(tmp_path)
+    scenario_id = bench.plans[0].scenario_id
+    bench.plans[0].evidence["plan_hash"] = "0" * 64
+    response = client.get(f"/api/plans/{scenario_id}")
+    assert response.status_code == 409
+    assert "plan_hash" in response.json()["detail"]
+    exported = client.get(f"/api/plans/{scenario_id}/mspdi")
+    assert exported.status_code == 409
+
+
 def test_local_workbench_serves_the_report_and_checks(tmp_path: Path) -> None:
     client, bench = _client(tmp_path)
     page = client.get("/")
     assert page.status_code == 200
     assert "editMode" in page.text and "default-src 'none'" in page.headers["content-security-policy"]
+    policy = page.headers["content-security-policy"]
+    script_src = next(part.strip() for part in policy.split(";") if part.strip().startswith("script-src"))
+    assert "unsafe-inline" not in script_src
+    nonce = script_src.removeprefix("script-src 'nonce-").removesuffix("'")
+    assert nonce and f'nonce="{nonce}"' in page.text
+    again = client.get("/")
+    assert again.headers["content-security-policy"] != policy
     data = client.get("/api/data").json()
     assert data["workbench"]["role"] == "planner" and data["scenarios"][0]["ok"]
     sid = accepted_id = bench.plans[0].scenario_id

@@ -7,7 +7,7 @@ memory and serves the same HTML report with an edit mode on top:
   the edited plan on the server, no solver involved;
 * "re-plan with edits" pins the moved tasks and re-solves the rest, by default
   with as few changes to the edited variant as possible; the new variant is
-  shown only if it passes the same ``outcome.ok`` gate;
+  shown only if ``attestation_error`` accepts it;
 * accept / reject a variant with a reason - written to a hash-chained journal.
 
 Roles come from ``SYNAPS_PROGRAMPLAN_TOKENS`` (see ``auth``). Without tokens
@@ -17,6 +17,7 @@ the server only answers on loopback host names.
 from __future__ import annotations
 
 import re
+import secrets
 import tempfile
 import threading
 from dataclasses import dataclass, field
@@ -40,8 +41,10 @@ from synaps_programplan.journal import append_decision, read_journal, verify_jou
 from synaps_programplan.model import OKRProgram
 from synaps_programplan.montecarlo import RiskResult
 from synaps_programplan.planner import SolveConfig, plan_hash
+from synaps_programplan.publish import attestation_error
 from synaps_programplan.report import render_html, report_data
 from synaps_programplan.result import PlanResult, Severity
+from synaps_programplan.scenarios import program_for_plan
 from synaps_programplan.versions import NAME, VERSION
 
 LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "::1", "testserver"]
@@ -63,15 +66,21 @@ def exposure_refusal(host: str, *, authenticated: bool, tls: bool) -> str | None
 
 
 SECURITY_HEADERS = {
-    "Content-Security-Policy": (
-        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
-        "connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; "
-        "frame-ancestors 'none'"
-    ),
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "no-store",
 }
+
+
+def content_security_policy(nonce: str) -> str:
+    """Per-response script nonce. Styles stay inline: the page paints from script."""
+    return (
+        "default-src 'none'; "
+        f"script-src 'nonce-{nonce}'; "
+        "style-src 'unsafe-inline'; "
+        "connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; "
+        "frame-ancestors 'none'"
+    )
 
 
 @dataclass
@@ -140,8 +149,9 @@ class Workbench:
 
     def accepted(self, scenario_id: str) -> PlanResult:
         result = self.find(scenario_id)
-        if not result.outcome.ok:
-            raise HTTPException(status_code=409, detail="scenario has no accepted plan (outcome.ok = false)")
+        error = attestation_error(program_for_plan(self.program, result), result)
+        if error:
+            raise HTTPException(status_code=409, detail=error)
         return result
 
     def data(self, principal: Principal) -> dict[str, Any]:
@@ -214,14 +224,21 @@ def create_app(bench: Workbench) -> FastAPI:
 
     @app.middleware("http")
     async def _headers(request: Request, call_next: Any) -> Response:
+        nonce = secrets.token_hex(16)
+        request.state.csp_nonce = nonce
         response: Response = await call_next(request)
         response.headers.update(SECURITY_HEADERS)
+        response.headers["Content-Security-Policy"] = content_security_policy(nonce)
         return response
 
     @app.get("/", response_class=HTMLResponse)
-    def index() -> str:
+    def index(request: Request) -> str:
         shell = {"workbench": {"auth": bench.tokens.enabled, "remote": True}}
-        return render_html(shell, title=f"Сводный план программы ОКР — {bench.program.program.name}")
+        return render_html(
+            shell,
+            title=f"Сводный план программы ОКР — {bench.program.program.name}",
+            nonce=request.state.csp_nonce,
+        )
 
     @app.get("/api/data")
     def data(who: User) -> dict[str, Any]:
@@ -265,7 +282,8 @@ def create_app(bench: Workbench) -> FastAPI:
             except ValueError as exc:
                 raise HTTPException(status_code=422, detail=str(exc)) from exc
             replan = result.metadata.get("replan", {})
-            if result.outcome.ok:
+            error = attestation_error(program_for_plan(bench.program, result), result)
+            if error is None:
                 bench.plans.append(result)
                 if bench.save_dir is not None:
                     bench.save_dir.mkdir(parents=True, exist_ok=True)
@@ -275,8 +293,8 @@ def create_app(bench: Workbench) -> FastAPI:
                 action="repair",
                 user=who.user,
                 role=who.role.value,
-                scenario_id=scenario_id if result.outcome.ok else base.scenario_id,
-                plan_hash=result.evidence.get("plan_hash") if result.outcome.ok else None,
+                scenario_id=scenario_id if error is None else base.scenario_id,
+                plan_hash=result.evidence.get("plan_hash") if error is None else None,
                 input_hash=fingerprint(bench.program),
                 reason=f"правка варианта {base.scenario_id}",
                 details={
@@ -297,7 +315,10 @@ def create_app(bench: Workbench) -> FastAPI:
             "requested_mode": body.mode,
             "churn": replan.get("churn"),
         }
-        if not result.outcome.ok:
+        if error is not None:
+            if result.outcome.ok:
+                summary["ok"] = False
+                summary["detail"] = error
             raise HTTPException(status_code=409, detail=summary)
         return summary
 

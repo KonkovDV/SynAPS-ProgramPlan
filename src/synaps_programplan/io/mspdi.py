@@ -229,7 +229,9 @@ def _task(
         )
     start, finish = _date(_text(node, "Start")), _date(_text(node, "Finish"))
     actual_start, actual_finish = _date(_text(node, "ActualStart")), _date(_text(node, "ActualFinish"))
-    pct = int(float(_text(node, "PercentComplete") or 0))
+    raw_percent = _text(node, "PercentComplete")
+    percent = int(float(raw_percent)) if raw_percent not in (None, "") else None
+    pct = 0 if percent is None else percent
     status = TaskStatus.PLANNED
     if pct >= 100 and actual_start and actual_finish:
         status = TaskStatus.DONE
@@ -276,6 +278,7 @@ def _task(
         pinned=pinned,
         status=status,
         remaining_wd=remaining,
+        percent_complete=_stored_percent(status, percent),
         actual_start=actual_start if status is not TaskStatus.PLANNED else None,
         actual_finish=actual_finish if status is TaskStatus.DONE else None,
         planned_start=start,
@@ -285,6 +288,16 @@ def _task(
         domain_attributes={"mspdi_uid": uid, "wbs": _text(node, "WBS")},
     )
     return task, duration
+
+
+def _stored_percent(status: TaskStatus, percent: int | None) -> int | None:
+    if status is TaskStatus.DONE:
+        return 100
+    if status is TaskStatus.IN_PROGRESS and percent is not None and percent < 100:
+        return percent
+    if status is TaskStatus.PLANNED and percent == 0:
+        return 0
+    return None
 
 
 def _baseline(node: ET.Element, tag: str) -> str | None:
@@ -505,6 +518,14 @@ def write_plan_mspdi(
                 source = program.task(row.task_id)
                 if source.hard_finish is not None:
                     ET.SubElement(element, _q("Deadline")).text = f"{source.hard_finish}T18:00:00"
+                ET.SubElement(element, _q("PercentComplete")).text = str(source.progress_percent())
+                if source.actual_start is not None:
+                    ET.SubElement(element, _q("ActualStart")).text = f"{source.actual_start}T09:00:00"
+                if source.actual_finish is not None:
+                    ET.SubElement(element, _q("ActualFinish")).text = f"{source.actual_finish}T18:00:00"
+                if source.status is TaskStatus.IN_PROGRESS and source.remaining_wd is not None:
+                    hours = source.remaining_wd * minutes_per_day // 60
+                    ET.SubElement(element, _q("RemainingDuration")).text = f"PT{hours}H0M0S"
                 reason = next((item.text for item in plan.explanations if item.task_id == row.task_id), "")
                 stamp = str(plan.evidence.get("plan_hash") or "")
                 ET.SubElement(element, _q("Notes")).text = f"plan_hash {stamp}. {reason}".strip()

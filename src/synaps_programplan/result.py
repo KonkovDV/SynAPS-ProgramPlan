@@ -98,6 +98,41 @@ class KPI(_Strict):
     shift_max_wd: int
 
 
+class CauseKind(StrEnum):
+    """Stable type of one explanation. The last two are reserved for later models."""
+
+    PRECEDENCE = "PRECEDENCE"
+    MAX_LAG = "MAX_LAG"
+    RESOURCE_CAPACITY = "RESOURCE_CAPACITY"
+    SKILL_CAPACITY = "SKILL_CAPACITY"
+    CALENDAR = "CALENDAR"
+    MAINTENANCE = "MAINTENANCE"
+    FREEZE_WINDOW = "FREEZE_WINDOW"
+    BASELINE = "BASELINE"
+    TEST_ARTICLE = "TEST_ARTICLE"
+    INFEASIBILITY_CONFLICT = "INFEASIBILITY_CONFLICT"
+    COUNTERFACTUAL = "COUNTERFACTUAL"
+    STATUS_DATE = "STATUS_DATE"
+    EARLIEST_START = "EARLIEST_START"
+    IN_PROGRESS = "IN_PROGRESS"
+    OPTIMIZER_CHOICE = "OPTIMIZER_CHOICE"
+    # Reserved: changeover (PR-04) and execution modes (PR-03). Not emitted yet.
+    SETUP_TRANSITION = "SETUP_TRANSITION"
+    MODE_SELECTION = "MODE_SELECTION"
+
+
+class ExplanationFact(_Strict):
+    """Fields a sentence is built from. A date that is not in the plan fails the check."""
+
+    kind: CauseKind
+    resource_id: str | None = None
+    project_id: str | None = None
+    blocker_task_id: str | None = None
+    dates: list[str] = Field(default_factory=list)
+    plan_hash: str
+    input_hash: str
+
+
 class Explanation(_Strict):
     task_id: str
     shift_wd: int
@@ -106,6 +141,7 @@ class Explanation(_Strict):
     chain: list[str] = Field(default_factory=list)
     text: str
     counterfactual: dict[str, Any] | None = None
+    fact: ExplanationFact | None = None
 
 
 class PlanResult(_Strict):
