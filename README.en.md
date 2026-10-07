@@ -27,7 +27,7 @@ SynAPS-ProgramPlan does this work:
 - explains every move: which link, which resource or which window holds the task;
 - estimates the risk of missing milestones and shows which risk moves the programme finish the most;
 - lets the planner drag a task and checks the edit at once;
-- writes every decision into a journal that cannot be quietly rewritten after the fact.
+- writes every decision into a hash-chained journal: a changed, deleted or reordered record inside the file is detected. Replacing the file together with its seal is detected when the hash of the last record is kept outside the system.
 
 The schedule is computed by the [SynAPS](https://github.com/KonkovDV/SynAPS) kernel on the Google OR-Tools CP-SAT solver. Every plan, whether computed or edited by hand, then passes a second check written apart from the solver and independent of its code.
 
@@ -52,7 +52,7 @@ Runs use a 10 s solver limit per instance (60 s for the study programmes), one t
 | Requirement | How it is met |
 |---|---|
 | **F1. One plan** from the plans of the separate projects | MS Project files (XML, and MPP or MPX through the MPXJ library), Primavera P6 XER exports with several projects in one file, and an Excel workbook. Resources that share a name across files become shared. A stand that is spelled differently in two files is joined by a name table. Cross-project links for MS Project come from a CSV table. Anything the import did not carry across exactly is listed in a report with a code. In strict mode a programme with a loss is not written |
-| **F2. Links, milestones, dates and constraints** | Four link types, with lag and maximum lag. Milestones. Mandated and planned dates. A shift limit, pinning, and a freeze on the near weeks. Leave and stand maintenance. The Russian production calendar from the government decrees for 2025–2027. A task may name a product, a configuration and a prototype: the prototype occupies a resource of capacity 1, so its tests run one after another |
+| **F2. Links, milestones, dates and constraints** | Four link types, with lag and maximum lag. Milestones. Mandated and planned dates. A shift limit, pinning, and a freeze on the near weeks. Leave and stand maintenance. The Russian production calendar from the government decrees for 2025–2027. A task may name a product, a configuration and a prototype: the prototype occupies a resource of capacity 1, so its tests run one after another. A task that has not started may carry several execution modes in JSON: CP-SAT keeps one, and the greedy dispatcher answers `UNSUPPORTED_MODEL`. Between different stand states there is a changeover interval, and those days are not added to the task duration. Excel and MS Project XML do not carry the mode list or the changeover matrix. MMLIB50 is not in the repository |
 | **F3. Conflicts and schedule risk** | Before the solve: overloads, projects competing for one resource, broken links, impossible and tight dates, faults in the source data. After the solve: P50, P80 and P90 for the programme and for each milestone, the share of samples in which the milestone is on time, task criticality, and a risk register with the working days each risk adds to P80 |
 | **F4. Alternative plans** | Deadlines, resource reserve, stability, balance, project priority, what-if (add a stand, move a milestone, drop a project, lengthen a task) and a plan that keeps the planner's edits. All of them sit in one comparison table; identical plans are collapsed |
 | **F5. Gantt, loading, critical work, reasons for change** | The report opens in a browser with no network. The planner's desk: a Gantt chart, drag and keyboard edits, an immediate check, a reschedule that moves as little as possible, a loading heatmap, a reason for every move, decisions with a written justification in the journal, user roles, and an export of the accepted plan back to MS Project. A project or a stage folds, the chart filters by plant and resource, the original dates stay visible, and a milestone with a P80 estimate carries a green or a red dot |
@@ -81,6 +81,7 @@ Each run has one verdict:
 | `INFEASIBLE` | It is proved that the programme cannot be scheduled under these dates, links and resources. The conflicting requirements are named, with how far each one has to move |
 | `REJECTED` | The solver returned a schedule, and the check found a violation. That plan is not shown |
 | `ERROR` | There is no plan, and infeasibility is not proved: the time limit ran out, for example |
+| `UNSUPPORTED_MODEL` | There is no plan: the programme has execution modes and the chosen solver does not encode them. That is how the greedy dispatcher answers. No dates are published |
 
 Every verdict and every violation code is in [`docs/reference-codes.md`](docs/reference-codes.md).
 
