@@ -307,6 +307,8 @@ def _positions(compiled: Compiled, assignments: list[Assignment]) -> dict[str, t
         if compiled.windows[task_id].duration == 0:
             end = start
         out[task_id] = (start, end)
+        if row.mode_code:
+            compiled.selected_mode[task_id] = row.mode_code
     return out
 
 
@@ -356,6 +358,10 @@ def _kernel_capacity(compiled: Compiled) -> tuple[dict[UUID, list[int]], dict[st
         start = compiled.index_of(op.earliest_start) if op.earliest_start else 0
         for day in range(start, min(horizon, start + op.base_duration_min)):
             free[req.aux_resource_id][day] -= req.quantity_needed
+    for task_id, modes in compiled.mode_demand.items():
+        chosen = compiled.selected_mode.get(task_id)
+        if chosen is not None and chosen in modes:
+            demand[task_id].update(modes[chosen])
     return free, demand
 
 
@@ -492,6 +498,9 @@ def finish_plan(
     ok = solved and kernel_ok and not hard
     claim = _claim(status, ok, config, solved, proof=not run.restricted)
     detail = run.solver_error or ("; ".join(kernel_kinds) if solved and not kernel_ok else "")
+    if result.metadata.get("unsupported_model") == "modes":
+        claim = Claim.UNSUPPORTED_MODEL
+        detail = detail or str(result.metadata.get("detail") or "")
     if status is SolverStatus.INFEASIBLE and claim is not Claim.INFEASIBLE:
         detail = detail or (
             "no plan found, but infeasibility is NOT proven: "
@@ -600,6 +609,12 @@ def build_rows(
             if task.status is TaskStatus.IN_PROGRESS and task.actual_start is not None:
                 start = task.actual_start
         shift = s_idx - ref_index[task.id] if task.id in ref_index and task.id in positions else None
+        mode_code = compiled.selected_mode.get(task.id)
+        chosen = next((mode for mode in task.modes if mode.code == mode_code), None)
+        demand_ids = [
+            demand.resource_id or demand.skill_id or ""
+            for demand in (chosen.demands if chosen is not None else [])
+        ]
         rows.append(
             TaskPlan(
                 task_id=task.id,
@@ -607,9 +622,11 @@ def build_rows(
                 name=task.name,
                 start=start,
                 finish=finish,
-                duration_wd=task.duration_wd,
+                duration_wd=chosen.duration_wd if chosen is not None else task.duration_wd,
                 status=task.status,
                 is_milestone=task.duration_wd == 0,
+                mode_code=mode_code,
+                demand_ids=demand_ids,
                 bound=bound.get(task.id, {}),
                 start_index=s_idx,
                 end_index=e_idx,
@@ -645,7 +662,7 @@ def _resource_links(program: OKRProgram, rows: dict[str, TaskPlan]) -> list[tupl
     users: dict[str, list[TaskPlan]] = defaultdict(list)
     tasks = {task.id: task for task in program.tasks}
     for task_id, row in rows.items():
-        for demand in tasks[task_id].demands:
+        for demand in tasks[task_id].demands_for(row.mode_code):
             key = demand.resource_id or row.bound.get(demand.skill_id or "") or ""
             if key:
                 users[key].append(row)
@@ -715,7 +732,7 @@ def resource_profiles(program: OKRProgram, compiled: Compiled, rows: list[TaskPl
         task = tasks[row.task_id]
         if task.status is TaskStatus.DONE:
             continue
-        for demand in task.demands:
+        for demand in task.demands_for(row.mode_code):
             rid = demand.resource_id or row.bound.get(demand.skill_id or "")
             if rid is None:
                 continue

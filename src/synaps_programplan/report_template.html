@@ -157,6 +157,7 @@ const tip=$("tip");function showTip(e,h){tip.innerHTML=h;tip.style.display="bloc
 function taskTip(t){let h=`<b>${esc(t.name)}</b><br>${esc(projName[t.project]||t.project)} · ${t.milestone?"веха "+fmt(t.finish):fmt(t.start)+" — "+fmt(t.finish)+" ("+t.duration+" р.д.)"}`;
  if(t.edited)h+=`<br><b>Правка:</b> было ${t.milestone?fmt(t.orig.finish):fmt(t.orig.start)+" — "+fmt(t.orig.finish)}`;
  if(t.ref_start)h+=`<br>Исходный план: ${fmt(t.ref_start)} — ${fmt(t.ref_finish)}`;if(t.shift)h+=`<br>Сдвиг: ${t.shift>0?"+":""}${t.shift} р.д.`;
+ if(t.mode)h+=`<br>Режим: ${esc(t.mode)}`;
  if(t.percent!=null)h+=`<br>Выполнение: ${t.percent} %`;
  if(t.baseline_start)h+=`<br>База: ${fmt(t.baseline_start)} — ${fmt(t.baseline_finish)}`+(t.baseline_slip_wd!=null?`, отклонение ${t.baseline_slip_wd>0?"+":""}${t.baseline_slip_wd} р.д.`:"");
  if(t.actual_start)h+=`<br>Факт: ${fmt(t.actual_start)}`+(t.actual_finish?` — ${fmt(t.actual_finish)}`:"");

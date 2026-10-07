@@ -39,7 +39,7 @@ The scheduler has been measured on the public sets used by research groups and s
 | RCPSP/max j10, j20, j30 | 810 | Start-to-start links, minimum and maximum lags. Every instance known to be infeasible is proved infeasible. Known optima match on every instance except one |
 | Study programmes | 3 sizes | Up to 64 projects and 2,688 activities. A plan is accepted at every size. CP-SAT cuts the greedy plan's total tardiness by 54%, 45% and 28% |
 
-Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 184.
+Runs use a 10 s solver limit per instance (60 s for the study programmes), one thread and a fixed random seed. Commands and the full tables are in [`docs/quality-assurance.md`](docs/quality-assurance.md). Automated tests: 190.
 
 ## What the programme manager gets
 
@@ -184,7 +184,7 @@ ruff format --check src tests scripts
 mypy src
 ```
 
-The SynAPS kernel is used in place and pinned to commit `786cf1b3bc915941558e7e50b2935de684a32643`. The same commit is recorded in `src/synaps_programplan/versions.py`, `pyproject.toml` and `CLAIMS_REGISTRY.md`. `tests/test_pin.py` checks that they agree. Generalised precedence was added to the kernel in [KonkovDV/SynAPS#45](https://github.com/KonkovDV/SynAPS/pull/45).
+The SynAPS kernel is used in place and pinned to commit `1feb50b33568cb86c1bfd12b9d7cd7247e17ee49`. The same commit is recorded in `src/synaps_programplan/versions.py`, `pyproject.toml` and `CLAIMS_REGISTRY.md`. `tests/test_pin.py` checks that they agree. Generalised precedence was added to the kernel in [KonkovDV/SynAPS#45](https://github.com/KonkovDV/SynAPS/pull/45). Picking exactly one execution mode is [KonkovDV/SynAPS#46](https://github.com/KonkovDV/SynAPS/pull/46); that commit is on the pull-request branch, not yet on the kernel `main`.
 
 From a checkout: `python -m synaps_programplan`. There are two services. `SynAPS-ProgramPlan serve` keeps the journal, checks roles, and outside the local address speaks only over TLS. `uvicorn synaps_programplan.api:app` stores nothing: on the local address it answers at once, from anywhere else only with a token. Public-set runs: `python scripts/bench_psplib.py`.
 

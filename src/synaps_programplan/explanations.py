@@ -60,7 +60,7 @@ _WINDOW_KIND = {
     "scenario": CauseKind.BASELINE,
 }
 
-_RESERVED = frozenset({CauseKind.SETUP_TRANSITION, CauseKind.MODE_SELECTION})
+_RESERVED = frozenset({CauseKind.SETUP_TRANSITION})
 
 
 @dataclass
@@ -91,10 +91,12 @@ def explain(
         adjustments = adjustments_of(result)
     ctx = _context(program, result, adjustments)
     late = {m.task_id for m in (result.kpi.milestones if result.kpi else []) if m.lateness_wd > 0}
+    modes = {task.id for task in program.tasks if task.modes}
     targets = [
         row
         for row in result.tasks
-        if row.task_id in ctx.compiled.windows and (row.shift_wd or row.task_id in late)
+        if row.task_id in ctx.compiled.windows
+        and (row.shift_wd or row.task_id in late or row.task_id in modes)
     ]
     targets.sort(key=lambda r: (-abs(r.shift_wd or 0), r.task_id))
     out: list[Explanation] = []
@@ -122,22 +124,34 @@ def explain(
             if value not in seen:
                 seen.append(value)
         blocker = cause.blocker_task_id
+        task = program.task(row.task_id)
+        chosen = next((mode for mode in task.modes if mode.code == row.mode_code), None)
+        if chosen is not None:
+            mode_text = f"выбран режим {chosen.code}, {chosen.duration_wd} раб. дн."
+            text = f"{head}: {mode_text}" + (f". {cause.text}{root}" if shift else "")
+            kind = CauseKind.MODE_SELECTION
+            code = CauseKind.MODE_SELECTION.value
+        else:
+            text = f"{head}: {cause.text}{root}"
+            kind = cause.kind
+            code = cause.code
         out.append(
             Explanation(
                 task_id=row.task_id,
                 shift_wd=shift,
-                cause_code=cause.code,
+                cause_code=code,
                 cause_refs=cause.refs,
                 chain=chain,
-                text=f"{head}: {cause.text}{root}",
+                text=text,
                 fact=ExplanationFact(
-                    kind=cause.kind,
+                    kind=kind,
                     resource_id=cause.resource_id,
                     project_id=ctx.projects.get(blocker, row.project_id) if blocker else row.project_id,
                     blocker_task_id=blocker,
                     dates=seen,
                     plan_hash=stamped_plan,
                     input_hash=stamped_input,
+                    mode_code=row.mode_code if chosen is not None else None,
                 ),
             )
         )
@@ -208,6 +222,11 @@ def fact_errors(program: OKRProgram, result: PlanResult) -> list[str]:
         if row is None:
             errors.append(f"{item.task_id}: работы нет в плане")
             continue
+        if fact.kind is CauseKind.MODE_SELECTION:
+            named = program.task(item.task_id)
+            codes = {mode.code for mode in named.modes}
+            if fact.mode_code not in codes or fact.mode_code != row.mode_code:
+                errors.append(f"{item.task_id}: режим {fact.mode_code!r} не выбран в этом плане")
         allowed = {row.start.isoformat(), row.finish.isoformat()}
         if fact.blocker_task_id:
             blocker = rows.get(fact.blocker_task_id)
@@ -244,7 +263,7 @@ def fact_errors(program: OKRProgram, result: PlanResult) -> list[str]:
             errors.append(f"{item.task_id}: у факта о ресурсе нет ресурса")
     fresh = {item.task_id for item in explain(program, result)}
     for task_id in fresh:
-        if task_id not in covered and task_id in rows and rows[task_id].shift_wd:
+        if task_id not in covered and task_id in rows and (rows[task_id].shift_wd or rows[task_id].mode_code):
             errors.append(f"{task_id}: сдвиг без факта")
     return errors
 
@@ -266,7 +285,7 @@ def _context(program: OKRProgram, result: PlanResult, adjustments: Adjustments) 
     for row in result.tasks:
         if row.status is TaskStatus.DONE:
             continue
-        for demand in tasks[row.task_id].demands:
+        for demand in tasks[row.task_id].demands_for(row.mode_code):
             rid = demand.resource_id or row.bound.get(demand.skill_id or "")
             if rid is None:
                 continue
@@ -413,7 +432,7 @@ def _resource_cause(ctx: _Ctx, row: TaskPlan) -> _Cause:
     probe = row.start_index - 1
     last = min(probe + row.duration_wd, len(ctx.compiled.axis))
     reserve: _Cause | None = None
-    for demand in task.demands:
+    for demand in task.demands_for(row.mode_code):
         rid = demand.resource_id or row.bound.get(demand.skill_id or "")
         if rid is None or rid not in ctx.avail:
             continue

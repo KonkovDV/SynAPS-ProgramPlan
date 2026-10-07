@@ -87,13 +87,14 @@ def report_data(
                     "deadline": _iso(tasks[row.task_id].hard_finish),
                     "due": _iso(tasks[row.task_id].due_date),
                     "bound": row.bound,
+                    "mode": row.mode_code,
                     "demands": [
                         {
                             "resource": d.resource_id or row.bound.get(d.skill_id or ""),
                             "skill": d.skill_id,
                             "units": d.units,
                         }
-                        for d in tasks[row.task_id].demands
+                        for d in tasks[row.task_id].demands_for(row.mode_code)
                     ],
                     "why": explanations.get(row.task_id),
                 }

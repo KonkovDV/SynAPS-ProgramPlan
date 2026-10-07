@@ -21,7 +21,7 @@ classifiers = [
 # SynAPS is consumed directly (no fork) and pinned by commit, never by branch.
 # Keep the SHA in sync with synaps_programplan.versions.SYNAPS_COMMIT (tested).
 dependencies = [
-  "synaps @ git+https://github.com/KonkovDV/SynAPS.git@786cf1b3bc915941558e7e50b2935de684a32643",
+  "synaps @ git+https://github.com/KonkovDV/SynAPS.git@1feb50b33568cb86c1bfd12b9d7cd7247e17ee49",
   "pydantic>=2.9",
   "ortools==9.15.6755",
   "defusedxml>=0.7",

@@ -35,7 +35,7 @@ def main() -> int:
         [sys.executable, "-m", "pip", "download", "-d", str(WHEELHOUSE), *packages],
     )
     source = os.environ.get("SYNAPS_SOURCE", r"C:\SynAPS")
-    pin = "786cf1b3bc915941558e7e50b2935de684a32643"
+    pin = "1feb50b33568cb86c1bfd12b9d7cd7247e17ee49"
     if Path(source).joinpath("pyproject.toml").is_file():
         revision = subprocess.check_output(["git", "-C", source, "rev-parse", "HEAD"], text=True).strip()
         if revision == pin:
@@ -55,7 +55,7 @@ def main() -> int:
         grouped.setdefault(_requirement_name(path.name), []).append(digest)
     lines = [
         "# Hashed wheels for an offline install. Produced by scripts/fetch_wheelhouse.py.",
-        "# SynAPS commit 786cf1b3bc915941558e7e50b2935de684a32643.",
+        "# SynAPS commit 1feb50b33568cb86c1bfd12b9d7cd7247e17ee49.",
     ]
     for name, digests in grouped.items():
         body = " \\\n    ".join(f"--hash=sha256:{digest}" for digest in digests)

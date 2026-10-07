@@ -92,7 +92,7 @@ def quality_issues(
                 "OPEN_END", f"{len(open_end)} работ без последователей (не ведут к вехе)", open_end[:50]
             )
         )
-    no_res = [t.id for t in program.tasks if t.duration_wd > 0 and not t.demands]
+    no_res = [t.id for t in program.tasks if t.duration_wd > 0 and not t.all_demands()]
     if no_res:
         out.append(QualityIssue("NO_RESOURCES", f"{len(no_res)} работ без назначенных ресурсов", no_res[:50]))
     long_tasks = [t.id for t in program.tasks if t.duration_wd > limits.long_task_wd]

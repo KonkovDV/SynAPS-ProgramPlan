@@ -7,7 +7,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
 from synaps_programplan.model import TaskStatus
 
@@ -33,6 +33,19 @@ class TaskPlan(_Strict):
     shift_wd: int | None = None
     critical: bool = False
     total_float_wd: int | None = None
+    mode_code: str | None = None
+    demand_ids: list[str] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def _omit_empty_mode(self, handler: Any) -> Any:
+        """A plan with no modes must hash as it did before the field existed."""
+        data = handler(self)
+        if isinstance(data, dict):
+            if data.get("mode_code") is None:
+                data.pop("mode_code", None)
+            if not data.get("demand_ids"):
+                data.pop("demand_ids", None)
+        return data
 
 
 class Severity(StrEnum):
@@ -57,6 +70,7 @@ class Claim(StrEnum):
     INFEASIBLE = "INFEASIBLE"
     REJECTED = "REJECTED"
     ERROR = "ERROR"
+    UNSUPPORTED_MODEL = "UNSUPPORTED_MODEL"
 
 
 class Outcome(_Strict):
@@ -116,7 +130,7 @@ class CauseKind(StrEnum):
     EARLIEST_START = "EARLIEST_START"
     IN_PROGRESS = "IN_PROGRESS"
     OPTIMIZER_CHOICE = "OPTIMIZER_CHOICE"
-    # Reserved: changeover (PR-04) and execution modes (PR-03). Not emitted yet.
+    # Reserved for changeover (PR-04). Not emitted yet.
     SETUP_TRANSITION = "SETUP_TRANSITION"
     MODE_SELECTION = "MODE_SELECTION"
 
@@ -131,6 +145,7 @@ class ExplanationFact(_Strict):
     dates: list[str] = Field(default_factory=list)
     plan_hash: str
     input_hash: str
+    mode_code: str | None = None
 
 
 class Explanation(_Strict):

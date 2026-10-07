@@ -1,0 +1,24 @@
+{
+  "source": "constructed",
+  "library": null,
+  "note": "MMLIB50 is not in this repository and these rows are not that library. They are the two instances in tests/test_modes.py: CP-SAT keeps one mode, and the mode that avoids a busy stand finishes no later than the stand's other job.",
+  "instances": [
+    {
+      "name": "shorter-mode-when-the-stand-is-free",
+      "modes": [
+        {"code": "slow", "duration_wd": 8, "demands": []},
+        {"code": "fast", "duration_wd": 2, "demands": ["st"]}
+      ],
+      "selected": "fast"
+    },
+    {
+      "name": "avoid-a-busy-stand",
+      "holder_wd": 5,
+      "modes": [
+        {"code": "fast", "duration_wd": 2, "demands": ["st"]},
+        {"code": "alone", "duration_wd": 4, "demands": []}
+      ],
+      "selected": "alone"
+    }
+  ]
+}

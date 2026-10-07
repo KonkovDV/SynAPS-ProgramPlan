@@ -19,6 +19,7 @@ _TASK_FIELDS = (
     "remaining_wd",
     "percent_complete",
     "demands",
+    "modes",
     "earliest_start",
     "latest_finish",
     "due_date",

@@ -34,6 +34,12 @@ from synaps.model import (
     State,
     WorkCenter,
 )
+from synaps.model import (
+    ModeRequirement as KernelDemand,
+)
+from synaps.model import (
+    OperationMode as KernelMode,
+)
 from synaps.precedence import PrecedenceEdge, PrecedenceType
 
 from synaps_programplan.calendar import DayCounter, WorkCalendar, WorkdayAxis
@@ -110,6 +116,9 @@ class Compiled:
     approximated: list[Dependency]
     infeasible_windows: list[str]
     block_ops: set[UUID]
+    # task -> mode code -> aux uuid -> units. Empty when the program has one way per task.
+    mode_demand: dict[str, dict[str, dict[UUID, int]]] = field(default_factory=dict)
+    selected_mode: dict[str, str] = field(default_factory=dict)
 
     def offset(self, index: int) -> datetime:
         return self.origin + timedelta(minutes=index)
@@ -301,7 +310,7 @@ def _base_window(
     reference: tuple[date, date] | None,
     project_deadline: date | None,
 ) -> TaskWindow:
-    duration = task.duration_wd
+    duration = min(mode.duration_wd for mode in task.modes) if task.modes else task.duration_wd
     if task.status is TaskStatus.IN_PROGRESS:
         elapsed = max(0, -(counter.ordinal_on_or_after(task.actual_start or axis.days[0]) - base))
         remaining = task.remaining_wd if task.remaining_wd is not None else duration - elapsed
@@ -493,6 +502,7 @@ def _build_kernel(
                     predecessor_op_id=previous,
                     earliest_start=origin + timedelta(minutes=max(0, window.lo)),
                     latest_finish=origin + timedelta(minutes=min(window.hi, horizon) + tail),
+                    modes=_kernel_modes(tasks[task_id]),
                     domain_attributes={"task_id": task_id},
                 )
             )
@@ -567,6 +577,7 @@ def _build_kernel(
         "skill_members": skill_members,
         "availability": availability,
         "block_ops": block_ops,
+        "mode_demand": _mode_demand(program, active),
     }
 
 
@@ -655,7 +666,9 @@ def _resources(
 
     skill_members: dict[str, list[str]] = {}
     skill_aux: dict[str, UUID] = {}
-    demanded_skills = sorted({d.skill_id for t in program.tasks for d in t.demands if d.skill_id is not None})
+    demanded_skills = sorted(
+        {d.skill_id for t in program.tasks for d in t.all_demands() if d.skill_id is not None}
+    )
     for skill_id in demanded_skills:
         members = sorted(r.id for r in program.resources if skill_id in r.skills)
         skill_members[skill_id] = members
@@ -681,7 +694,7 @@ def _resources(
 
     reqs: list[OperationAuxRequirement] = []
     for task_id in active:
-        if windows[task_id].duration == 0:
+        if windows[task_id].duration == 0 or tasks[task_id].modes:
             continue
         units_by_aux: dict[UUID, int] = defaultdict(int)
         for demand in tasks[task_id].demands:
@@ -696,6 +709,42 @@ def _resources(
                 )
             )
     return resource_aux, skill_aux, skill_members, availability, aux, reqs, blocks
+
+
+def _kernel_modes(task: Task) -> list[KernelMode]:
+    if not task.modes:
+        return []
+    out: list[KernelMode] = []
+    for mode in task.modes:
+        requirements: list[KernelDemand] = []
+        for demand in mode.demands:
+            aux_id = (
+                sid("res", demand.resource_id) if demand.resource_id else sid("skill", demand.skill_id or "")
+            )
+            requirements.append(KernelDemand(aux_resource_id=aux_id, quantity_needed=demand.units))
+        out.append(KernelMode(code=mode.code, duration_min=mode.duration_wd, requirements=requirements))
+    return out
+
+
+def _mode_demand(program: OKRProgram, active: list[str]) -> dict[str, dict[str, dict[UUID, int]]]:
+    tasks = {task.id: task for task in program.tasks}
+    out: dict[str, dict[str, dict[UUID, int]]] = {}
+    for task_id in active:
+        task = tasks[task_id]
+        if not task.modes:
+            continue
+        out[task_id] = {}
+        for mode in task.modes:
+            bucket: dict[UUID, int] = {}
+            for demand in mode.demands:
+                aux_id = (
+                    sid("res", demand.resource_id)
+                    if demand.resource_id
+                    else sid("skill", demand.skill_id or "")
+                )
+                bucket[aux_id] = demand.units
+            out[task_id][mode.code] = bucket
+    return out
 
 
 def _runs(lost: list[int]) -> list[tuple[int, int, int]]:

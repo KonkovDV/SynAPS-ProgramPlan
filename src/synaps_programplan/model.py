@@ -127,6 +127,18 @@ class Demand(_Strict):
         return self
 
 
+class ExecutionMode(_Strict):
+    """One way to perform a task: its own duration and its own resource demand.
+
+    The solver keeps exactly one. ``duration_wd`` on the task itself is the
+    shortest mode, so a file with no chosen mode still has a duration.
+    """
+
+    code: str = Field(min_length=1, max_length=40, pattern=r"^[A-Za-z0-9_.:-]+$")
+    duration_wd: int = Field(ge=0)
+    demands: list[Demand] = Field(default_factory=list)
+
+
 class Task(_Strict):
     id: str
     project_id: str
@@ -135,6 +147,7 @@ class Task(_Strict):
     duration_wd: int = Field(ge=0)
     kind: TaskKind = TaskKind.WORK
     demands: list[Demand] = Field(default_factory=list)
+    modes: list[ExecutionMode] = Field(default_factory=list)
     earliest_start: date | None = None
     latest_finish: date | None = None
     due_date: date | None = None
@@ -163,8 +176,21 @@ class Task(_Strict):
     def _consistent(self) -> Self:
         if self.kind is TaskKind.MILESTONE and self.duration_wd != 0:
             raise ValueError(f"milestone {self.id} must have duration_wd = 0")
-        if self.kind is TaskKind.MILESTONE and self.demands:
+        if self.kind is TaskKind.MILESTONE and (self.demands or self.modes):
             raise ValueError(f"milestone {self.id} cannot demand resources")
+        if self.modes:
+            if self.demands:
+                raise ValueError(f"task {self.id} keeps demands on its modes, not on the task")
+            if self.status is not TaskStatus.PLANNED:
+                raise ValueError(f"task {self.id} with modes must still be planned")
+            codes = [mode.code for mode in self.modes]
+            if len(codes) != len(set(codes)):
+                raise ValueError(f"task {self.id} has duplicate mode codes")
+            if any(mode.duration_wd < 1 for mode in self.modes):
+                raise ValueError(f"task {self.id} modes must take at least one working day")
+            shortest = min(mode.duration_wd for mode in self.modes)
+            if self.duration_wd != shortest:
+                raise ValueError(f"task {self.id} duration_wd must be the shortest mode ({shortest})")
         if self.status is TaskStatus.DONE and (self.actual_start is None or self.actual_finish is None):
             raise ValueError(f"DONE task {self.id} needs actual_start and actual_finish")
         if self.status is TaskStatus.IN_PROGRESS and self.actual_start is None:
@@ -195,7 +221,26 @@ class Task(_Strict):
         data = handler(self)
         if isinstance(data, dict) and data.get("percent_complete") is None:
             data.pop("percent_complete", None)
+        if isinstance(data, dict) and not data.get("modes"):
+            data.pop("modes", None)
         return data
+
+    def demands_for(self, mode_code: str | None) -> list[Demand]:
+        """Demands of the selected mode, or the task demands when there is one way to do it."""
+        if not self.modes:
+            return list(self.demands)
+        for mode in self.modes:
+            if mode.code == mode_code:
+                return list(mode.demands)
+        return []
+
+    def all_demands(self) -> list[Demand]:
+        if not self.modes:
+            return list(self.demands)
+        out: list[Demand] = []
+        for mode in self.modes:
+            out.extend(mode.demands)
+        return out
 
     @property
     def is_milestone(self) -> bool:
@@ -527,7 +572,7 @@ def _task_refs(
             issues.append(f"task {task.id} references unknown wbs {task.wbs_id}")
         elif node.project_id != task.project_id:
             issues.append(f"task {task.id} wbs {task.wbs_id} belongs to another project")
-    for demand in task.demands:
+    for demand in task.all_demands():
         if demand.resource_id is not None:
             resource = resources.get(demand.resource_id)
             if resource is None:
@@ -603,7 +648,8 @@ def _identity_issues(
             issues.append(
                 f"task {task.id} configuration {chosen_configuration.id} does not match article {named.id}"
             )
-        occupied = any(demand.resource_id == named.resource_id for demand in task.demands)
+        groups = [mode.demands for mode in task.modes] if task.modes else [task.demands]
+        occupied = all(any(demand.resource_id == named.resource_id for demand in group) for group in groups)
         if not occupied:
             issues.append(
                 f"task {task.id} names test article {named.id} "
@@ -619,8 +665,8 @@ def skill_pool_conflicts(program: OKRProgram) -> list[str]:
     and is never demanded by name. Otherwise the pooled model is only a
     relaxation and every skill demand must be bound to a named person.
     """
-    demanded = {d.skill_id for t in program.tasks for d in t.demands if d.skill_id is not None}
-    named = {d.resource_id for t in program.tasks for d in t.demands if d.resource_id is not None}
+    demanded = {d.skill_id for t in program.tasks for d in t.all_demands() if d.skill_id is not None}
+    named = {d.resource_id for t in program.tasks for d in t.all_demands() if d.resource_id is not None}
     out: list[str] = []
     for resource in program.resources:
         pools = [skill for skill in resource.skills if skill in demanded]

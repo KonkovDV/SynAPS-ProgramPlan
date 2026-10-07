@@ -157,12 +157,37 @@ def _check_task(ctx: _Ctx, task: Task, row: TaskPlan, out: list[Violation]) -> N
             )
     else:
         start = ctx.start_anchor(task, row)
-        if end - start != task.duration_wd:
+        expected = task.duration_wd
+        if task.modes:
+            chosen = next((mode for mode in task.modes if mode.code == row.mode_code), None)
+            if chosen is None:
+                out.append(
+                    Violation(
+                        code="MODE_UNKNOWN",
+                        severity=HARD,
+                        message=f"task {task.id} has no mode {row.mode_code!r}",
+                        task_ids=ids,
+                    )
+                )
+            else:
+                expected = chosen.duration_wd
+                got = sorted(row.demand_ids)
+                want = sorted(demand.resource_id or demand.skill_id or "" for demand in chosen.demands)
+                if got != want:
+                    out.append(
+                        Violation(
+                            code="MODE_DEMAND",
+                            severity=HARD,
+                            message=f"task {task.id} mode {chosen.code} demands {want}, plan lists {got}",
+                            task_ids=ids,
+                        )
+                    )
+        if end - start != expected:
             out.append(
                 Violation(
                     code="DURATION_MISMATCH",
                     severity=HARD,
-                    message=f"task {task.id} spans {end - start} wd, expected {task.duration_wd}",
+                    message=f"task {task.id} spans {end - start} wd, expected {expected}",
                     task_ids=ids,
                 )
             )
@@ -326,7 +351,7 @@ def _check_capacity(ctx: _Ctx, rows: dict[str, TaskPlan], out: list[Violation]) 
         if span is None:
             continue
         hi = max(hi, span[1])
-        for demand in task.demands:
+        for demand in task.demands_for(row.mode_code):
             resource_id = demand.resource_id or row.bound.get(demand.skill_id or "")
             if resource_id is None:
                 continue
@@ -381,7 +406,7 @@ def _check_skills(ctx: _Ctx, rows: dict[str, TaskPlan], out: list[Violation]) ->
         task = ctx.tasks[task_id]
         if task.status is TaskStatus.DONE or task.duration_wd == 0:
             continue
-        for demand in task.demands:
+        for demand in task.demands_for(row.mode_code):
             if demand.skill_id is None:
                 continue
             bound = row.bound.get(demand.skill_id)
@@ -435,7 +460,7 @@ def _check_skill_pools(ctx: _Ctx, rows: dict[str, TaskPlan], out: list[Violation
         if span is None:
             continue
         hi = max(hi, span[1])
-        for demand in task.demands:
+        for demand in task.demands_for(row.mode_code):
             if demand.skill_id is not None:
                 loads[demand.skill_id].append(
                     Load(start=span[0], end=span[1], units=demand.units, ref=task_id)
