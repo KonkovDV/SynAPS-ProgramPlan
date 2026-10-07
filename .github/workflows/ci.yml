@@ -12,9 +12,13 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: "17"
       - name: Install SynAPS from the pinned commit and SynAPS-ProgramPlan
         run: |
-          pip install -e ".[dev]"
+          pip install -e ".[dev,mpp]"
       - run: python -m pytest tests -q
       - run: python scripts/build_evidence.py --check
       - run: python scripts/lint_claims.py
